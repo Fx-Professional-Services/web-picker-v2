@@ -110,109 +110,11 @@ function selectItem(itemJson, id, selectedItems = new Map(), columns, cart) {
  * @returns {string} - The ID value of the added item.
  */
 function addItemToCart(table, itemJson, columns, id) {
-	// create row
-	const tr = document.createElement('tr');
 
-	// loop through columns to create cells
-	columns.forEach(column => {
-
-		// create td
-		const td = document.createElement('td');
-
-		// get data about this column
-		const { item_field_name, type, editable, default_value, var_name, format } = column;
-
-		// find the value for this column in the itemJson object
-		const value = itemJson[item_field_name] || default_value || '';
-
-		// typecast value
-		let typedValue;
-		if (type === 'number') {
-			typedValue = parseFloat(value);
-		} else if (type === 'boolean') {
-			typedValue = value === 'true';
-		} else {
-			typedValue = value.toString();
-		}
-
-
-		// set editable
-		td.contentEditable = editable;
-
-		// set value
-		td.textContent = typedValue;
-
-		// set var_name so we can get the value later
-		if (var_name) {
-			td.dataset.var_name = var_name;
-		}
-		
-		// add other attributes
-		td.dataset.type = type;
-		td.dataset.item_field_name = item_field_name;
-		td.dataset.editable = editable;
-		td.dataset.format = format;
-
-
-		// if this is editable and has a var_name, add an event listener 
-		// to emit an event when the value is changed
-		if (editable && var_name) {
-			tr.addEventListener('input', event => {
-
-				// get the var_name
-				const var_name = event.target.dataset.var_name;
-
-				// get the value
-				const value = event.target.textContent;
-
-				console.log(`variableChanged: ${var_name} = ${value}`)
-
-				// create event
-				const customEvent = new CustomEvent('variableChanged', {
-					detail: {
-						var_name,
-						value
-					}
-				});
-
-				// dispatch event
-				tr.dispatchEvent(customEvent);
-			});
-		}
-
-		// if this is an expression, add an event listener to recalculate the value
-		// when the variableChanged event is received.
-		if (type == 'expression') {
-			tr.addEventListener('variableChanged', event => {
-
-				// get the var_name
-				const var_name = event.detail.var_name;
-
-				// get the value
-				const value = event.detail.value;
-
-				// get the expression
-				const expression = td.dataset.expression;
-
-				// get the vars
-				const vars = getVars(columns, tr);
-
-				// evaluate the expression
-				const evaluated = eval(expression);
-
-				// set the value
-				td.textContent = evaluated;
-			});
-		}
-
-		// add event listener to row to cancel bubble of variableChanged event
-		tr.addEventListener('variableChanged', event => {
-			event.stopPropagation();
-		});
-
-		// append to tr
-		tr.appendChild(td);
-	});
+	// create row element,
+	// includes vars object to store values for variables
+	// and event listener to update vars object when variableChanged event is emitted
+	const tr = createTr();
 
 	// get id value from itemJson data
 	const id_key = id.key_name;
@@ -229,6 +131,45 @@ function addItemToCart(table, itemJson, columns, id) {
 
 	// set id as attribute of the tr
 	tr.dataset.row_id = id_value;
+
+
+	// loop through columns to create cells
+	columns.forEach(column => {
+
+		// create td element
+		// includes event listener to emit variableChanged event when value is changed
+		const td = createTd(column);
+
+		// get data about this column
+		const { item_field_name, type, default_value, var_name } = column;
+
+		// find the value for this column in the itemJson object
+		const value = itemJson[item_field_name] || default_value || '';
+
+		// typecast value
+		let typedValue;
+		if (type === 'number') {
+			typedValue = parseFloat(value);
+		} else if (type === 'boolean') {
+			typedValue = value === 'true';
+		} else {
+			typedValue = value.toString();
+		}
+
+		// set value
+		td.textContent = typedValue;
+
+		// update vars object
+		if (var_name) {
+			tr.vars[var_name] = typedValue;
+		}
+
+		// append to tr
+		tr.appendChild(td);
+	});
+
+	// evaluate expressions
+	updateExpressions(tr);
 
 	// append tr to table
 	table.appendChild(tr);
@@ -280,7 +221,6 @@ function returnSelectedItems(selectedItems, template, id, columns, cart) {
 function transformItem(itemJson, template, idString, columns, cart) {
 	// create result object
 	const result = {};
-	// const vars = {};
 
 	// get the row from the cart
 	const row = cart.querySelector(`tr[data-row_id="${idString}"]`);
@@ -296,24 +236,29 @@ function transformItem(itemJson, template, idString, columns, cart) {
 	// loop through the template object
 	for (const [key, value] of Object.entries(template)) {
 		// determine the value to set: either field, value, or template literal
+
 		if (itemJson.hasOwnProperty(value)) {
 			// if the value is a key name, get the value from the itemJson object
+
 			result[key] = itemJson[value];
+
 		} else if (typeof value === 'string' && value.startsWith('`') && value.endsWith('`')) {
 			// if the value is a string containing a template literal, evaluate it
-			string = value.replaceAll('`', '');
+
 			evaluated = eval(value);
 			result[key] = evaluated;
+
 		} else {
 			// otherwise, set the value directly
+
 			result[key] = value;
+
 		}
 	}
 
 	// return the result
 	return result;
 }
-
 
 function getVars(columns, row) {
 	const vars = {};
@@ -339,4 +284,126 @@ function getVars(columns, row) {
 	vars.id = row_id;
 
 	return vars;
+}
+
+function createTr() {
+	// create row
+	const tr = document.createElement('tr');
+
+	// add vars object to row
+	tr.vars = {};
+
+	// add event listener to update the vars object when a variableChanged event is emitted
+	// and stop the event from bubbling up
+	// and update expressions
+	//	- get all expression cells
+	tr.addEventListener('variableChanged', event => {
+
+		event.stopPropagation();
+
+		// get the var_name and value
+		const var_name = event.detail.var_name;
+		const value = event.detail.value;
+
+		// update vars
+		tr.vars[var_name] = value;
+
+		// update expressions
+		updateExpressions(tr);
+
+	});
+
+	return tr;
+}
+
+function createTd(column) {
+	// create td
+	const td = document.createElement('td');
+
+	// get data about this column
+	const { item_field_name, type, editable, default_value, var_name, format } = column;
+
+	// set editable
+	td.contentEditable = editable;
+
+	// set var_name so we can get the value later
+	if (var_name) {
+		td.dataset.var_name = var_name;
+	}
+
+	// add other attributes
+	td.dataset.type = type;
+	td.dataset.item_field_name = item_field_name;
+	td.dataset.editable = editable;
+	td.dataset.format = format;
+
+	if (item_field_name) {
+		td.dataset.item_field_name = item_field_name;
+	}
+
+	if (type === 'expression') {
+		td.dataset.expression = column.expression;
+	}
+
+	// if this is editable and has a var_name, add an event listener 
+	// to emit an event when the value is changed
+	if (editable && var_name) {
+		td.addEventListener('input', handleInput);
+	}
+
+	function handleInput(event) {
+		// get the var_name
+		const var_name = event.target.dataset.var_name;
+
+		// get the value
+		const value = event.target.textContent;
+
+		console.log(`variableChanged: ${var_name} = ${value}`)
+
+		// create event
+		const customEvent = new CustomEvent('variableChanged', {
+
+			// allow event to bubble up
+			bubbles: true,
+
+			detail: {
+				var_name,
+				value
+			}
+		});
+
+		// dispatch event
+		td.dispatchEvent(customEvent);
+	}
+
+	return td;
+}
+
+function updateExpressions(tr) {
+
+	// get all expression cells
+	const expression_cells = tr.querySelectorAll('td[data-type="expression"]');
+
+	// loop through expression cells
+	expression_cells.forEach(cell => {
+
+		// get the expression
+		const expression = cell.dataset.expression
+
+		// get the vars
+		const vars = tr.vars;
+
+		// evaluate the expression
+		const evaluated = eval(expression);
+
+		// set the value
+		cell.textContent = evaluated;
+
+		// update vars
+		const var_name = cell.dataset.var_name;
+		tr.vars[var_name] = evaluated;
+		
+	});
+
+	return tr;
 }

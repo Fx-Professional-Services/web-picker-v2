@@ -73,6 +73,17 @@ let result = returnSelectedItems(
   table,
 );
 
+function getResults() {
+	return returnSelectedItems(
+		selectedItems,
+		template,
+		id,
+		columns,
+		table,
+	);
+
+}
+
 // Assert that the table has the correct number of rows
 console.log(table.rows.length); // Expected output: 4
 
