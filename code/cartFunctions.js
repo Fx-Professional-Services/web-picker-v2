@@ -1,3 +1,5 @@
+import { PerformScriptWithOption } from "../helpers/PerformScriptWithOption";
+
 /**
  * Draws a cart visualization on the specified table element.
  * 
@@ -301,4 +303,23 @@ function getVars(columns, row) {
 	vars.id = row_id;
 
 	return vars;
+}
+
+/**
+ * Submits the selected items to FileMaker.
+ * This function will be called in the HTML side button
+ * 
+ * @global {Object} config - The configuration object. From loadConfigFunctions.js
+*/
+function SubmitSelectedItems() {
+  //let data = selectedItems;
+
+  //Add a new field "total" to the config object
+  config.total = getTotalPrice();
+
+  //Add a new field "records" to the config object
+  config.records = newSelectedItems;
+
+
+  PerformScriptWithOption("sub: pick (web picker)", config, "5");
 }
