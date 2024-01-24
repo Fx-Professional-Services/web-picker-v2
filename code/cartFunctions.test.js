@@ -26,7 +26,15 @@ const columns = [
     format: 'number',
     var_name: 'quantity',
     default_value: 1,
-  },
+	}, {
+		name: 'Subtotal',
+		type: 'expression',
+		item_field_name: 'subtotal',
+		editable: false,
+		format: 'currency',
+		var_name: 'subtotal',
+		expression: '`${vars.quantity * vars.price}`',
+	},
 ];
 const rows1 = [
   {

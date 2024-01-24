@@ -120,7 +120,7 @@ function addItemToCart(table, itemJson, columns, id) {
 		const td = document.createElement('td');
 
 		// get data about this column
-		const { item_field_name, type, editable, default_value, var_name } = column;
+		const { item_field_name, type, editable, default_value, var_name, format } = column;
 
 		// find the value for this column in the itemJson object
 		const value = itemJson[item_field_name] || default_value || '';
@@ -143,13 +143,21 @@ function addItemToCart(table, itemJson, columns, id) {
 		td.textContent = typedValue;
 
 		// set var_name so we can get the value later
-		td.dataset.var_name = var_name;
+		if (var_name) {
+			td.dataset.var_name = var_name;
+		}
+		
+		// add other attributes
+		td.dataset.type = type;
+		td.dataset.item_field_name = item_field_name;
+		td.dataset.editable = editable;
+		td.dataset.format = format;
+
 
 		// if this is editable and has a var_name, add an event listener 
 		// to emit an event when the value is changed
 		if (editable && var_name) {
 			tr.addEventListener('input', event => {
-
 
 				// get the var_name
 				const var_name = event.target.dataset.var_name;
@@ -171,6 +179,36 @@ function addItemToCart(table, itemJson, columns, id) {
 				tr.dispatchEvent(customEvent);
 			});
 		}
+
+		// if this is an expression, add an event listener to recalculate the value
+		// when the variableChanged event is received.
+		if (type == 'expression') {
+			tr.addEventListener('variableChanged', event => {
+
+				// get the var_name
+				const var_name = event.detail.var_name;
+
+				// get the value
+				const value = event.detail.value;
+
+				// get the expression
+				const expression = td.dataset.expression;
+
+				// get the vars
+				const vars = getVars(columns, tr);
+
+				// evaluate the expression
+				const evaluated = eval(expression);
+
+				// set the value
+				td.textContent = evaluated;
+			});
+		}
+
+		// add event listener to row to cancel bubble of variableChanged event
+		tr.addEventListener('variableChanged', event => {
+			event.stopPropagation();
+		});
 
 		// append to tr
 		tr.appendChild(td);
