@@ -30,7 +30,7 @@ const columns = [
 		editable: false,
 		format: 'currency',
 		var_name: 'subtotal',
-		expression: '`$${(vars.quantity * vars.price).toFixed(2)}`',
+    expression: '`$ ${(vars.quantity * vars.price).toFixed(2)}`',
   }, {
     name: 'string test',
     type: 'expression',
@@ -79,7 +79,7 @@ try {
 	// console.log('results', cart.results);
 
 	// add the item to the cart
-	// cart.addItem(itemJson);
+	cart.addItem(itemJson);
 
 } catch (error) {
 	console.error(error);

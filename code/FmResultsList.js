@@ -2,7 +2,7 @@ class FmResultsList {
 
 	#queryResponse
 
-	constructor(parentElement, columns) {
+	constructor(parentElement, columns, request) {
 		try {
 			// set properties
 			this.columns = columns

@@ -143,13 +143,30 @@ const testResponse = {
   }
 };
 
+const testRequest = {
+  "layout": "query: product v1",
+  "limit": 10,
+  "sort": [
+    {
+      "fieldName": "id",
+      "sortOrder": "ascend"
+    }
+  ],
+  "query": [
+    {
+      "name": "*"
+    }
+  ]
+
+}
+
 
 // Create a parent element
 const parentElement = document.createElement('div');
 document.body.appendChild(parentElement);
 
 // Instantiate the FmResultsList class
-const fmResultsList = new FmResultsList(parentElement, testColumns, 'SELECT * FROM users', 'users');
+const fmResultsList = new FmResultsList(parentElement, testColumns, testRequest, 'users');
 
 // Check if the class is correctly instantiated
 console.assert(fmResultsList instanceof FmResultsList, 'fmResultsList should be an instance of FmResultsList');
