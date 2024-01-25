@@ -45,7 +45,7 @@ class FmResultsList {
 		try {
 			// create table
 			const table = document.createElement('table')
-			table.classList.add('fm-results-list')
+			table.classList.add('fm-results-list', 'styled-table')
 
 			// create body
 			const body = document.createElement('tbody')
