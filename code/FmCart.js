@@ -71,7 +71,7 @@ class FmCart {
 		}
 
 		try {
-			table.classList.add('fm-cart');
+			table.classList.add('fm-cart', 'styled-table');
 
 			// add table body
 			const tbody = document.createElement('tbody');
