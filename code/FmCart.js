@@ -28,8 +28,10 @@ class FmCart {
 	}
 
 	addItem(itemJson) {
+		console.log('addItem', itemJson)
 		this.#selectItem(itemJson, this.id, this.selectedItems, this.columns, this.cart);
 	}
+
 
 	#createHeader(columns) {
 		const header = document.createElement('thead');
@@ -164,7 +166,7 @@ class FmCart {
 				// typecast value
 				let typedValue;
 				if (type === 'number') {
-					typedValue = parseFloat(value);
+					typedValue = parseFloat(value) || 0;
 				} else if (type === 'boolean') {
 					typedValue = value === 'true';
 				} else {

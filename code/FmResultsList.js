@@ -1,6 +1,8 @@
 class FmResultsList {
 
 	#queryResponse
+	#request
+	#requestScriptName = 'sub: query and callback (web picker v2)'
 
 	constructor(parentElement, columns, request) {
 		try {
@@ -16,13 +18,22 @@ class FmResultsList {
 			// add footer 
 			this.table.appendChild(this.footer)
 
+			// set request
+			if (request) {
+				this.request = request
+			}
+
+			return this;
+
 		} catch (error) {
 			throw error
 		}
 	}
 
+	// SETTERS
 	set queryResponse(response) {
 		try {
+			console.log('queryResponse', response)
 			this.#queryResponse = response
 			const { data } = response
 			this.records = data
@@ -36,10 +47,50 @@ class FmResultsList {
 		}
 	}
 
+	set request(request) {
+		try {
+
+
+			this.#request = request
+
+			// initialize these, they'll change when we paginate 
+			this.limit = request.limit || 100
+			this.offset = request.offset || 0
+			this.query = request.query || []
+			// data will be returned using a callback function
+
+		} catch (error) {
+			throw error;
+		}
+
+
+	}
+
+	// GETTERS
 	get queryResponse() {
 		return this.#queryResponse
 	}
 
+	get request() {
+		return this.#request
+	}
+
+	// METHODS
+	requestData() {
+		try {
+
+			if (!this.request) {
+				throw new Error('requestData: request is required')
+			}
+			// request data from FileMaker
+			this.#requestData(this.request)
+
+		} catch (error) {
+			throw error
+		}
+	}
+
+	// PRIVATE METHODS
 	// draw the table
 	#drawTable(parentElement, columns = this.columns) {
 		try {
@@ -81,7 +132,9 @@ class FmResultsList {
 				const th = document.createElement('th')
 				th.textContent = name.toString() || ''
 				th.dataset.type = type.toString() || ''
-				th.dataset.item_field_name = item_field_name.toString() || ''
+				if (item_field_name) {
+					th.dataset.item_field_name = item_field_name.toString() || ''
+				}
 
 				if (format) {
 					th.dataset.format = format.toString()
@@ -111,9 +164,36 @@ class FmResultsList {
 			columns.forEach(column => {
 				const { type, item_field_name, format } = column
 				const td = document.createElement('td')
-				td.textContent = fieldData[item_field_name]
+
+				// get value, the key name may have spaces
+				const value = fieldData[item_field_name]
+				td.textContent = value
 				td.dataset.type = type.toString() || ''
-				td.dataset.item_field_name = item_field_name.toString() || ''
+
+				if (item_field_name) {
+					td.dataset.item_field_name = item_field_name.toString() || ''
+				} else if (type == 'cart-button') {
+					// get the carts array 
+					const cart_ids = column.cart_ids
+
+					// loop through the carts array
+					cart_ids.forEach(cart_id => {
+						// create button
+						const button = document.createElement('button')
+						button.textContent = 'Add'
+						td.appendChild(button)
+
+						// add event listener
+						// event listener should find cart by id
+						// then call the addItem() method
+						button.addEventListener('click', () => {
+							// const cart = document.querySelector(`#${cart_id}`)
+							console.log(window.cart)
+							window[cart_id].addItem(fieldData)
+						})
+					})
+
+				}
 
 				if (format) {
 					td.dataset.format = format.toString()
@@ -144,6 +224,13 @@ class FmResultsList {
 		try {
 			const footer = document.createElement('tfoot')
 			const row = document.createElement('tr')
+
+			// create next button
+			const nextButton = this.#createNextButton()
+
+			// add button to row
+			row.appendChild(nextButton)
+
 			footer.appendChild(row)
 			return footer
 		} catch (error) {
@@ -151,6 +238,62 @@ class FmResultsList {
 		}
 	}
 
+	#requestData(request) {
+		try {
+			// request data from FileMaker
+			FileMaker.PerformScriptWithOption(
+				this.#requestScriptName,
+				JSON.stringify(request),
+				"5"
+			)
+		} catch (error) {
+			throw error;
+		}
+	}
+
+	#createNextButton() {
+		try {
+			const button = document.createElement('button')
+			button.textContent = 'Next'
+			button.addEventListener('click', () => {
+				this.#nextPage()
+			})
+			return button
+		} catch (error) {
+			throw error
+		}
+	}
+
+	#nextPage() {
+		try {
+
+			console.log('nextPage')
+
+			let { limit, offset } = this
+
+			// increment offset
+			offset += limit
+
+			const request = {
+				...this.request,
+				limit,
+				offset,
+			}
+
+			this.request = request
+
+			console.log('request', request)
+
+			// request data from FileMaker
+			this.requestData()
+
+			// // redraw the table
+			// this.requestData()
+
+		} catch (error) {
+			throw error
+		}
+	}
 
 }
 
