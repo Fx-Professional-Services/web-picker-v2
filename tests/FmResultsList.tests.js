@@ -230,10 +230,11 @@ function test2() {
   const testRequest = {
     "action": "read",
     "layouts": "query: item (web picker)",
-    "limit": 2,
+    "limit": 5,
+    "offset":1,
     "query": [
       {
-        "name": "*"
+        "type": "==product"
       }
     ]
 

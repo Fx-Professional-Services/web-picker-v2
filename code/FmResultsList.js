@@ -8,7 +8,7 @@ class FmResultsList {
 		try {
 			// set properties
 			this.columns = columns
-			this.records = []
+			this.records = [] 
 
 			// draw the table
 			this.table = this.#drawTable(parentElement, columns)
@@ -38,6 +38,11 @@ class FmResultsList {
 			const { data } = response
 			this.records = data
 
+			// delete existing rows
+			while (this.body.firstChild) {
+				this.body.removeChild(this.body.firstChild)
+			}
+
 			// draw the rows
 			this.#drawRows(this.body, this.columns, data)
 			return this
@@ -50,14 +55,22 @@ class FmResultsList {
 	set request(request) {
 		try {
 
-
+			// save to private property
 			this.#request = request
 
 			// initialize these, they'll change when we paginate 
 			this.limit = request.limit || 100
-			this.offset = request.offset || 0
+			this.offset = request.offset || 1
 			this.query = request.query || []
 			// data will be returned using a callback function
+
+			// enable/disable next/previous buttons
+			if (this.offset <= 1) {
+				this.previousButton.disabled = true
+			} else {
+				this.previousButton.disabled = false
+			}
+
 
 		} catch (error) {
 			throw error;
@@ -225,10 +238,17 @@ class FmResultsList {
 			const footer = document.createElement('tfoot')
 			const row = document.createElement('tr')
 
-			// create next button
+			// create next/prev buttons
 			const nextButton = this.#createNextButton()
+			const previousButton = this.#createPreviousButton()
+
+			// save to private properties
+			this.nextButton = nextButton
+			this.previousButton = previousButton
+
 
 			// add button to row
+			row.appendChild(previousButton)
 			row.appendChild(nextButton)
 
 			footer.appendChild(row)
@@ -240,6 +260,9 @@ class FmResultsList {
 
 	#requestData(request) {
 		try {
+
+			console.log('requesting data from FM', request)
+
 			// request data from FileMaker
 			FileMaker.PerformScriptWithOption(
 				this.#requestScriptName,
@@ -264,15 +287,28 @@ class FmResultsList {
 		}
 	}
 
+	#createPreviousButton() {
+		try {
+			const button = document.createElement('button')
+			button.textContent = 'Previous'
+			button.addEventListener('click', () => {
+				this.#previousPage()
+			})
+			return button
+		} catch (error) {
+			throw error
+		}
+	}
+
 	#nextPage() {
 		try {
 
-			console.log('nextPage')
+			// console.log('nextPage')
 
 			let { limit, offset } = this
 
 			// increment offset
-			offset += limit
+			offset += limit 
 
 			const request = {
 				...this.request,
@@ -282,7 +318,39 @@ class FmResultsList {
 
 			this.request = request
 
-			console.log('request', request)
+
+			// request data from FileMaker
+			this.requestData()
+
+		} catch (error) {
+			throw error
+		}
+	}
+
+	#previousPage() {
+		try {
+			// console.log('previousPage')
+
+			let { limit, offset } = this
+
+			// decrement offset
+			offset -= limit
+
+			const request = {
+				...this.request,
+				limit,
+				offset,
+			}
+
+			// if offset is 0 or less, set to 1
+			// also disable previous button
+			if (offset <= 0) { 
+				request.offset = 1
+			}
+
+			this.request = request
+
+			// console.log('request', request)
 
 			// request data from FileMaker
 			this.requestData()
