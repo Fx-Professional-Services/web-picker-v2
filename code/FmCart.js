@@ -29,7 +29,13 @@ class FmCart {
 
 	addItem(itemJson) {
 		console.log('addItem', itemJson)
+		// this.selectedItems = 
 		this.#selectItem(itemJson, this.id, this.selectedItems, this.columns, this.cart);
+	}
+
+	deleteItem(id) {
+		// this.selectedItems = 
+		this.#deleteRow(id, this.selectedItems, this.cart);
 	}
 
 
@@ -55,6 +61,12 @@ class FmCart {
 			}
 			row.appendChild(th);
 		});
+
+		// add column for delete button
+		const th = document.createElement('th');
+		th.textContent = 'Delete';
+		row.appendChild(th);
+
 		return header;
 	}
 
@@ -125,6 +137,8 @@ class FmCart {
 		// add item to selectedItems
 		selectedItems.set(id_value, itemJson);
 
+		this.selectedItems = selectedItems;
+
 		return selectedItems;
 
 		function addItemToCart(table, itemJson, columns, id) {
@@ -187,6 +201,20 @@ class FmCart {
 
 			// evaluate expressions
 			this.#updateExpressions(tr);
+
+			// create delete button
+			const deleteButton = document.createElement('button');
+			deleteButton.textContent = 'Delete';
+			deleteButton.addEventListener('click', event => {
+				this.#deleteRow(id_value, selectedItems, cart);
+			});
+
+			// create td for delete button
+			const td = document.createElement('td');
+			td.appendChild(deleteButton);
+
+			// append td to tr
+			tr.appendChild(td);
 
 			// append tr to table
 			table.appendChild(tr);
@@ -407,5 +435,20 @@ class FmCart {
 		});
 
 		return tr;
+	}
+
+	#deleteRow(id, selectedItems, cart) {
+		// get the row
+		const row = cart.querySelector(`tr[data-row_id="${id}"]`);
+
+		// remove from selectedItems
+		selectedItems.delete(id);
+
+		// remove from cart
+		row.remove();
+
+		this.selectedItems = selectedItems;
+
+		return selectedItems;
 	}
 }

@@ -220,10 +220,10 @@ function test1() {
 function test2() {
 
   const testColumns = [
-    { name: 'Name', type: 'text', item_field_name: 'name' },
-    { name: 'Type', type: 'text', item_field_name: 'type' },
-    { name: 'Price', type: 'number', item_field_name: 'Price::amount' },
-    { name: 'Unit', type: 'text', item_field_name: 'Unit Of Measure::abbreviation' },
+    { name: 'Name', type: 'text', item_field_name: 'name', searchable: true},
+    { name: 'Type', type: 'text', item_field_name: 'type', searchable: true },
+    { name: 'Price', type: 'number', item_field_name: 'Price::amount', searchable: true },
+    { name: 'Unit', type: 'text', item_field_name: 'Unit Of Measure::abbreviation', searchable: true },
     { name: 'Add To Cart', type: 'cart-button', cart_ids: ["cart"] },
   ];
 
@@ -246,7 +246,6 @@ function test2() {
   document.body.appendChild(parentElement);
 
   // create another table with same columns that will query FileMaker for data
-
   fmResultsList = new FmResultsList(parentElement, testColumns, testRequest);
   fmResultsList.requestData();
 
