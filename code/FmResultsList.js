@@ -423,16 +423,30 @@ class FmResultsList {
 			// build query
 			const newQuery = []
 
-			// loop through query
-			request.query.forEach(query => {
-				// merge query with searchFieldsQuery
-				const mergedQuery = {
-					...searchFieldsQuery,
-					...query,
-				}
-				// add to newQuery
-				newQuery.push(mergedQuery)
+			if (query) {
+							// loop through query
+				request.query.forEach(query => {
+
+					if (!query.omit) {
+					 
+						// merge query with searchFieldsQuery
+						const mergedQuery = {
+							...searchFieldsQuery,
+							...query,
+						}
+						// add to newQuery
+						newQuery.push(mergedQuery)
+						
+					} else if (query.omit) {
+						// leave it unchanged and add this as a new query
+						newQuery.push(query, searchFieldsQuery)
+					}
+					
 			})
+			} else {
+				newQuery = searchFieldsQuery
+			}
+
 
 			// update request
 			request.query = newQuery

@@ -38,7 +38,6 @@ class FmCart {
 		this.#deleteRow(id, this.selectedItems, this.cart);
 	}
 
-
 	#createHeader(columns) {
 		const header = document.createElement('thead');
 		const row = document.createElement('tr');
