@@ -257,7 +257,7 @@ class FmResultsList {
 						// then call the addItem() method
 						button.addEventListener('click', () => {
 							// const cart = document.querySelector(`#${cart_id}`)
-							console.log(window.cart)
+							console.log(window[cart_id])
 							window[cart_id].addItem(fieldData)
 						})
 					})
@@ -430,7 +430,7 @@ class FmResultsList {
 			// build query
 			const newQuery = []
 
-			if (query) {
+			if (request.query?.length > 0) {
 							// loop through query
 				request.query.forEach(query => {
 
@@ -449,14 +449,20 @@ class FmResultsList {
 						newQuery.push(query, searchFieldsQuery)
 					}
 					
-			})
-			} else {
-				newQuery = searchFieldsQuery
-			}
+				})
+			} else if ( Object.keys(searchFieldsQuery).length > 0) {
+				// if searchFieldsQuery has values...
+				newQuery.push(searchFieldsQuery)
+			} 
 
 
 			// update request
-			request.query = newQuery
+			if (newQuery.length > 0) {
+				request.query = newQuery
+			} else {
+				request = this.firstRequest
+			}
+			// request.query = newQuery
 
 			return request
 
@@ -498,12 +504,17 @@ class FmResultsList {
 	#keyUpHandler(event) {
 		try {
 			// console.log('keyup event fired')
+			const value = event.target.value
 
 			// get item_field_name
 			const item_field_name = event.target.dataset.item_field_name
 
 			// update searchFieldsQuery
-			this.searchFieldsQuery[item_field_name] = event.target.value
+			if(value === '') {
+				delete this.searchFieldsQuery[item_field_name]
+			} else {
+				this.searchFieldsQuery[item_field_name] = value
+			}
 
 			// console.log('searchFieldsQuery', this.searchFieldsQuery)
 

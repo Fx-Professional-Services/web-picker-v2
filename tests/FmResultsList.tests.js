@@ -179,14 +179,14 @@ function main() {
 
 
 // write function for FM to call
-function fmSetData(data, list = list2) {
-  try {
-    data = JSON.parse(data);
-    list.queryResponse = data;
-  } catch (error) {
-    console.error(error);
-  }
-}
+// function fmSetData(data, list = list2) {
+//   try {
+//     data = JSON.parse(data);
+//     list.queryResponse = data;
+//   } catch (error) {
+//     console.error(error);
+//   }
+// }
 
 // call main function
 if (!window.FileMaker) {
