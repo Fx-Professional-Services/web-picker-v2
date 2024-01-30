@@ -14,6 +14,9 @@ class FmResultsList {
 			this.searchFieldsQuery = {}
 			this.timeout = null
 
+			this.totalRecordCount = 0
+			this.foundCount = 0
+
 			// draw the table
 			this.table = this.#drawTable(parentElement, columns)
 			this.body = this.table.querySelector('tbody')
@@ -42,6 +45,10 @@ class FmResultsList {
 			const { data } = response
 			this.records = data
 
+			// update totalRecordCount and foundCount
+			this.totalRecordCount = response.dataInfo.totalRecordCount
+			this.foundCount = response.dataInfo.foundCount
+
 			// delete existing rows
 			while (this.body.firstChild) {
 				this.body.removeChild(this.body.firstChild)
@@ -62,7 +69,7 @@ class FmResultsList {
 			if (!this.#firstRequest) {
 					// save first request
 				this.#firstRequest = JSON.parse(JSON.stringify(request));
-				console.log('saving first request', this.#firstRequest)
+				// console.log('saving first request', this.#firstRequest)
 			}
 
 			// clone request
@@ -436,7 +443,7 @@ class FmResultsList {
 						}
 						// add to newQuery
 						newQuery.push(mergedQuery)
-						
+
 					} else if (query.omit) {
 						// leave it unchanged and add this as a new query
 						newQuery.push(query, searchFieldsQuery)
@@ -466,7 +473,6 @@ class FmResultsList {
 
 			// are we getting correct values for searchFieldsQuery and firstRequest?
 
-
 			// set timeout
 			this.timeout = setTimeout((searchFieldsQuery, firstRequest) => {
 
@@ -491,7 +497,7 @@ class FmResultsList {
 
 	#keyUpHandler(event) {
 		try {
-			console.log('keyup event fired')
+			// console.log('keyup event fired')
 
 			// get item_field_name
 			const item_field_name = event.target.dataset.item_field_name
@@ -499,7 +505,7 @@ class FmResultsList {
 			// update searchFieldsQuery
 			this.searchFieldsQuery[item_field_name] = event.target.value
 
-			console.log('searchFieldsQuery', this.searchFieldsQuery)
+			// console.log('searchFieldsQuery', this.searchFieldsQuery)
 
 		} catch (error) {
 			throw error
