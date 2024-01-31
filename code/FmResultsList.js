@@ -40,7 +40,6 @@ class FmResultsList {
 	// SETTERS
 	set queryResponse(response) {
 		try {
-			console.log('queryResponse', response)
 			this.#queryResponse = response
 			const { data } = response
 			this.records = data
@@ -69,7 +68,6 @@ class FmResultsList {
 			if (!this.#firstRequest) {
 					// save first request
 				this.#firstRequest = JSON.parse(JSON.stringify(request));
-				// console.log('saving first request', this.#firstRequest)
 			}
 
 			// clone request
@@ -87,8 +85,6 @@ class FmResultsList {
 			} else {
 				this.previousButton.disabled = false
 			}
-
-			console.log('request', this.#request, 'firstrequest', this.#firstRequest)
 
 		} catch (error) {
 			throw error;
@@ -257,7 +253,6 @@ class FmResultsList {
 						// then call the addItem() method
 						button.addEventListener('click', () => {
 							// const cart = document.querySelector(`#${cart_id}`)
-							console.log(window[cart_id])
 							window[cart_id].addItem(fieldData)
 						})
 					})
@@ -317,8 +312,6 @@ class FmResultsList {
 	#requestData(request) {
 		try {
 
-			console.log('requesting data from FM', request)
-
 			// request data from FileMaker
 			FileMaker.PerformScriptWithOption(
 				this.#requestScriptName,
@@ -359,7 +352,6 @@ class FmResultsList {
 	#nextPage() {
 		try {
 
-			// console.log('nextPage')
 
 			let { limit, offset } = this
 
@@ -385,7 +377,6 @@ class FmResultsList {
 
 	#previousPage() {
 		try {
-			// console.log('previousPage')
 
 			let { limit, offset } = this
 
@@ -406,7 +397,6 @@ class FmResultsList {
 
 			this.request = request
 
-			// console.log('request', request)
 
 			// request data from FileMaker
 			this.requestData()
@@ -421,8 +411,6 @@ class FmResultsList {
 
 	#calculateNewRequest(columns, request, searchFieldsQuery) {
 		try {
-
-			// console.log('calculateNewRequest', request, searchFieldsQuery)
 
 			// reset offset
 			request.offset = 1
@@ -494,7 +482,6 @@ class FmResultsList {
 
 			// calculate new request
 			//  const newRequest = this.#calculateNewRequest(this.columns, this.request, this.searchFields)
-			//  console.log('newRequest', newRequest)
 
 		} catch (error) {
 			throw error
@@ -503,7 +490,6 @@ class FmResultsList {
 
 	#keyUpHandler(event) {
 		try {
-			// console.log('keyup event fired')
 			const value = event.target.value
 
 			// get item_field_name
@@ -515,8 +501,6 @@ class FmResultsList {
 			} else {
 				this.searchFieldsQuery[item_field_name] = value
 			}
-
-			// console.log('searchFieldsQuery', this.searchFieldsQuery)
 
 		} catch (error) {
 			throw error

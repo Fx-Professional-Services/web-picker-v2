@@ -1,11 +1,11 @@
 
 let fmResultsList;
 let cartsArray = [];
+let button;
 
 // initialize picker
 function initializePicker(config) {
 
-	console.log("initializePicker")
 
 	// parse config if needed
 	if (typeof config === 'string') {
@@ -27,11 +27,10 @@ function initializePicker(config) {
 
 	// build picker
 
-	let { items, carts, template } = config;
+	let { items, carts, template, options } = config;
 	const { request, columns, idKeyName } = items;
 
 	// create parent element
-	console.log("create parent element")
 	const parentElement = document.createElement('div');
 	document.body.appendChild(parentElement);
 
@@ -52,9 +51,8 @@ function initializePicker(config) {
 		try {
 
 			// declare to window variable, will change this later 
-			const cart = new FmCart(cartJson.rows || [], cartJson.columns, cartJson.idKeyName, template);
+			const cart = new FmCart(cartJson.rows, cartJson.columns, cartJson.idKeyName, template, options);
 			window[`cart${index}`] = cart;
-			console.log(`cart${index}`, window[`cart${index}`]);
 			document.body.appendChild(cart.cart);
 
 			// add cart to carts array
@@ -68,17 +66,41 @@ function initializePicker(config) {
 	});
 
 	// add button to get picker results
-	const button = document.createElement('button');
-	button.innerHTML = 'Get Picker Results';
+	button = document.createElement('button');
+	button.innerHTML = 'Done';
 	button.onclick = () => getPickerResults();
+
+
+	// add button to cancel
+	cancelButton = document.createElement('button');
+	cancelButton.innerHTML = 'Cancel';
+	cancelButton.onclick = () => {
+		// send result to filemaker
+		sendResultToFileMaker({ user_canceled: true });
+		// reset
+		reset(cartsArray);
+	}
+	document.body.appendChild(cancelButton);
 	document.body.appendChild(button);
 
 
+
+
+	// add listener for maxResults event 
+	document.addEventListener('maxResults', handleMaxResults);
+
+}
+
+function handleMaxResults(event) {
+	console.log("maxResults event", event.detail);
+	if (event.detail.auto_submit) {
+		getPickerResults(cartsArray);
+	}
 }
 
 // return picker results
 function getPickerResults(carts = cartsArray) {
-	console.log("getPickerResults", carts)
+
 	let blankScriptName = 'blank script';
 	let callbackScriptName = 'return parameter as result';
 
@@ -87,14 +109,50 @@ function getPickerResults(carts = cartsArray) {
 		results[`cart${index}`] = cart.results;
 	});
 
-	// perform callback script in FileMaker
+	// send results to FileMaker
+	sendResultToFileMaker(results);
 
-	// return results w/ option 5
-	FileMaker.PerformScriptWithOption(callbackScriptName, JSON.stringify(results), "5");
+	// reset
+	reset(carts);
 
-	// resume the paused script by calling the blank script w/ option 3
-	FileMaker.PerformScriptWithOption(blankScriptName, "", "3");
+}
 
+function sendResultToFileMaker(result) {
+
+	const blankScriptName = 'blank script';
+	const callbackScriptName = 'return parameter as result';
+
+	try {
+		// return results w/ option 5
+		FileMaker.PerformScriptWithOption(callbackScriptName, JSON.stringify(result), "5");
+
+		// resume the paused script by calling the blank script w/ option 3
+		FileMaker.PerformScriptWithOption(blankScriptName, "", "3");
+
+	} catch (error) {
+		throw error;
+	}
+}
+
+// reset function
+function reset(carts) {
+	// remove carts from DOM and window variables
+	carts.forEach((cart, index) => {
+		cart.cart.remove();
+		window[`cart${index}`] = null;
+	});
+
+	// delete the document body and recreate it
+	document.body.remove();
+	document.body = document.createElement('body');
+
+	// reset and prepare for another configuration
+	cartsArray = [];
+	fmResultsList = null;
+	button = null;
+
+	// remove event listener for maxResults
+	document.removeEventListener('maxResults', handleMaxResults);
 }
 
 // set data from FileMaker
@@ -110,7 +168,6 @@ function fmSetData(data, list = fmResultsList) {
 // helper functions
 function validateConfig(config) {
 	const { items, carts, template, options } = config;
-	console.log("validateConfig")
 
 
 	// build one error message for all errors
@@ -137,7 +194,6 @@ function validateConfig(config) {
 
 	if (carts) {
 
-		console.log(carts)
 
 		carts.forEach((cart, index) => {
 
@@ -170,11 +226,18 @@ function validateConfig(config) {
 		errorMesageArray.push("No template was provided");
 	}
 
+	if (options) {
+		if (options.max_results) {
+			if (typeof options.max_results !== 'number') {
+				errorMesageArray.push("options.max_results must be a number");
+			}
+		}
+	}
+
 	if (errorMesageArray.length > 0) {
 		console.error(errorMesageArray.join("\n"));
 		throw new Error(errorMesageArray.join("\n"));
 	} else {
-		console.log("config is valid")
 		return true;
 	}
 

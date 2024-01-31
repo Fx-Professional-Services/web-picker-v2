@@ -1,11 +1,14 @@
 class FmCart {
-	constructor(rows, cols, idKeyName, template) {
+	constructor(rows, cols, idKeyName, template, options) {
 		this.cart = document.createElement('table');
 		this.id = { key_name: idKeyName };
 		this.columns = cols;
-		this.rows = rows;
+		this.rows = rows || [];
 		this.template = template;
-		// this.selectedItems;
+		this.auto_submit = options?.auto_submit || false;
+		this.maxResults = options?.max_results || Infinity;
+		console.log('maxResults', this.maxResults)
+		console.log('options', options)
 
 		try {
 			// draw the header and rows
@@ -28,7 +31,6 @@ class FmCart {
 	}
 
 	addItem(itemJson) {
-		console.log('addItem', itemJson)
 		// this.selectedItems = 
 		this.#selectItem(itemJson, this.id, this.selectedItems, this.columns, this.cart);
 	}
@@ -49,7 +51,12 @@ class FmCart {
 			th.textContent = name.toString() || '';
 			th.dataset.type = type.toString() || '';
 			th.dataset.item_field_name = item_field_name?.toString() || '';
-			th.dataset.editable = Boolean(editable);
+			// th.dataset.editable = Boolean(editable);
+
+			if (editable) {
+				// add editable attribute
+				th.setAttribute('editable', '')
+			}
 
 			if (format) {
 				th.dataset.format = format.toString();
@@ -126,12 +133,14 @@ class FmCart {
 		let id_value;
 		let id_key = id.key_name;
 
-		console.log('selectItem', itemJson, id, selectedItems, columns, cart)
+		if (selectedItems.size >= this.maxResults) {
+		// if the count of selectedItems is greater than or equal to maxResults, do nothing
 
-		// add item to cart if it's not already in selectedItems map
-		if (selectedItems.has(itemJson[id_key])) {
+			return selectedItems;
+
+		} else if (selectedItems.has(itemJson[id_key])) {
+			// add item to cart if it's not already in selectedItems map
 			// do nothing
-			console.log('item already in cart');
 			return selectedItems;
 
 		} else if (cart && columns && id) {
@@ -145,6 +154,25 @@ class FmCart {
 		selectedItems.set(id_value, itemJson);
 
 		this.selectedItems = selectedItems;
+
+		// emit event
+		if (selectedItems.size >= this.maxResults) {
+			const customEvent = new CustomEvent('maxResults', {
+
+				// allow event to bubble up
+				bubbles: true,
+
+				detail: {
+					maxResults: this.maxResults,
+					auto_submit: this.auto_submit,
+				}
+			});
+
+			console.log('dispatching maxResults event', customEvent)
+
+			// dispatch event
+			cart.dispatchEvent(customEvent);
+		}
 
 		return selectedItems;
 
@@ -393,8 +421,6 @@ class FmCart {
 
 			// get the value
 			const value = event.target.textContent;
-
-			console.log(`variableChanged: ${var_name} = ${value}`)
 
 			// create event
 			const customEvent = new CustomEvent('variableChanged', {
