@@ -1,5 +1,6 @@
 
 let fmResultsList;
+let cartsArray = [];
 
 // initialize picker
 function initializePicker(config) {
@@ -25,7 +26,8 @@ function initializePicker(config) {
 	}
 
 	// build picker
-	const { items, carts, template } = config;
+
+	let { items, carts, template } = config;
 	const { request, columns, idKeyName } = items;
 
 	// create parent element
@@ -45,14 +47,18 @@ function initializePicker(config) {
 	}
 
 	// create carts
-	carts.forEach((cart, index) => {
+	carts.forEach((cartJson, index) => {
 
 		try {
 
 			// declare to window variable, will change this later 
-			window[`cart${index}`] = new FmCart([], cart.columns, cart.idKeyName, template);
+			const cart = new FmCart(cartJson.rows || [], cartJson.columns, cartJson.idKeyName, template);
+			window[`cart${index}`] = cart;
 			console.log(`cart${index}`, window[`cart${index}`]);
-			document.body.appendChild(window[`cart${index}`].cart);
+			document.body.appendChild(cart.cart);
+
+			// add cart to carts array
+			cartsArray.push(cart);
 
 		} catch (error) {
 			console.error(error);
@@ -60,15 +66,24 @@ function initializePicker(config) {
 		};
 
 	});
+
+	// add button to get picker results
+	const button = document.createElement('button');
+	button.innerHTML = 'Get Picker Results';
+	button.onclick = () => getPickerResults();
+	document.body.appendChild(button);
+
+
 }
 
 // return picker results
-function getPickerResults() {
-	let blankScriptName = 'blankScript';
-	let callbackScriptName = 'returnResults';
+function getPickerResults(carts = cartsArray) {
+	console.log("getPickerResults", carts)
+	let blankScriptName = 'blank script';
+	let callbackScriptName = 'return parameter as result';
 
 	let results = {}
-	carts.forEach(cart, index => {
+	carts.forEach((cart, index) => {
 		results[`cart${index}`] = cart.results;
 	});
 

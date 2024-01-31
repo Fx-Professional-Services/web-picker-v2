@@ -48,7 +48,7 @@ class FmCart {
 			const th = document.createElement('th');
 			th.textContent = name.toString() || '';
 			th.dataset.type = type.toString() || '';
-			th.dataset.item_field_name = item_field_name.toString() || '';
+			th.dataset.item_field_name = item_field_name?.toString() || '';
 			th.dataset.editable = Boolean(editable);
 
 			if (format) {
@@ -124,9 +124,17 @@ class FmCart {
 		}
 
 		let id_value;
+		let id_key = id.key_name;
 
-		// add item to cart
-		if (cart && columns && id) {
+		console.log('selectItem', itemJson, id, selectedItems, columns, cart)
+
+		// add item to cart if it's not already in selectedItems map
+		if (selectedItems.has(itemJson[id_key])) {
+			// do nothing
+			console.log('item already in cart');
+			return selectedItems;
+
+		} else if (cart && columns && id) {
 			id_value = addItemToCart.call(this, table, itemJson, columns, id);
 		} else {
 			// generate UUID
