@@ -179,3 +179,7 @@ function validateConfig(config) {
 	}
 
 }
+
+function refreshPickerWindow(){
+	window.location.reload();
+}
