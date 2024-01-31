@@ -25,7 +25,7 @@
     Borders to separate rows.
     You can comment this section if you don't need borders.
 */
-/* .styled-table tbody tr {
+.styled-table tbody tr {
     border-bottom: 1px solid #dddddd;
 }
 
@@ -35,7 +35,7 @@
 
 .styled-table tbody tr:last-of-type {
     border-bottom: 2px solid #4b4b4b;
-} */
+} 
 
 /* Active Row */
 .styled-table tbody tr:hover {

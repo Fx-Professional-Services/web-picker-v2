@@ -28,7 +28,14 @@ class FmCart {
 	}
 
 	addItem(itemJson) {
+		console.log('addItem', itemJson)
+		// this.selectedItems = 
 		this.#selectItem(itemJson, this.id, this.selectedItems, this.columns, this.cart);
+	}
+
+	deleteItem(id) {
+		// this.selectedItems = 
+		this.#deleteRow(id, this.selectedItems, this.cart);
 	}
 
 	#createHeader(columns) {
@@ -41,7 +48,7 @@ class FmCart {
 			const th = document.createElement('th');
 			th.textContent = name.toString() || '';
 			th.dataset.type = type.toString() || '';
-			th.dataset.item_field_name = item_field_name.toString() || '';
+			th.dataset.item_field_name = item_field_name?.toString() || '';
 			th.dataset.editable = Boolean(editable);
 
 			if (format) {
@@ -53,6 +60,12 @@ class FmCart {
 			}
 			row.appendChild(th);
 		});
+
+		// add column for delete button
+		const th = document.createElement('th');
+		th.textContent = 'Delete';
+		row.appendChild(th);
+
 		return header;
 	}
 
@@ -111,9 +124,17 @@ class FmCart {
 		}
 
 		let id_value;
+		let id_key = id.key_name;
 
-		// add item to cart
-		if (cart && columns && id) {
+		console.log('selectItem', itemJson, id, selectedItems, columns, cart)
+
+		// add item to cart if it's not already in selectedItems map
+		if (selectedItems.has(itemJson[id_key])) {
+			// do nothing
+			console.log('item already in cart');
+			return selectedItems;
+
+		} else if (cart && columns && id) {
 			id_value = addItemToCart.call(this, table, itemJson, columns, id);
 		} else {
 			// generate UUID
@@ -122,6 +143,8 @@ class FmCart {
 
 		// add item to selectedItems
 		selectedItems.set(id_value, itemJson);
+
+		this.selectedItems = selectedItems;
 
 		return selectedItems;
 
@@ -164,7 +187,7 @@ class FmCart {
 				// typecast value
 				let typedValue;
 				if (type === 'number') {
-					typedValue = parseFloat(value);
+					typedValue = parseFloat(value) || 0;
 				} else if (type === 'boolean') {
 					typedValue = value === 'true';
 				} else {
@@ -185,6 +208,20 @@ class FmCart {
 
 			// evaluate expressions
 			this.#updateExpressions(tr);
+
+			// create delete button
+			const deleteButton = document.createElement('button');
+			deleteButton.textContent = 'Delete';
+			deleteButton.addEventListener('click', event => {
+				this.#deleteRow(id_value, selectedItems, cart);
+			});
+
+			// create td for delete button
+			const td = document.createElement('td');
+			td.appendChild(deleteButton);
+
+			// append td to tr
+			tr.appendChild(td);
 
 			// append tr to table
 			table.appendChild(tr);
@@ -405,5 +442,20 @@ class FmCart {
 		});
 
 		return tr;
+	}
+
+	#deleteRow(id, selectedItems, cart) {
+		// get the row
+		const row = cart.querySelector(`tr[data-row_id="${id}"]`);
+
+		// remove from selectedItems
+		selectedItems.delete(id);
+
+		// remove from cart
+		row.remove();
+
+		this.selectedItems = selectedItems;
+
+		return selectedItems;
 	}
 }

@@ -143,18 +143,112 @@ const testResponse = {
   }
 };
 
+const testRequest = {
+  "action": "read",
+  "layouts": "query: item (web picker)",
+  "limit": 10,
+  "query": [
+    {
+      "name": "*"
+    }
+  ]
 
-// Create a parent element
-const parentElement = document.createElement('div');
-document.body.appendChild(parentElement);
+}
 
-// Instantiate the FmResultsList class
-const fmResultsList = new FmResultsList(parentElement, testColumns, 'SELECT * FROM users', 'users');
+let list1, list2, list3, list4;
 
-// Check if the class is correctly instantiated
-console.assert(fmResultsList instanceof FmResultsList, 'fmResultsList should be an instance of FmResultsList');
+function main() {
 
-// Set the queryResponse and check if it's correctly set
-fmResultsList.queryResponse = testResponse.response;
-console.assert(fmResultsList.queryResponse === testResponse, 'queryResponse should be correctly set');
-console.assert(fmResultsList.records === testResponse.data, 'records should be correctly set');
+  try {
+
+    // create first table with test data
+    // list1 = test1();
+
+    // create second table tha will query for its own data
+    list2 = test2();
+
+
+
+
+  } catch (error) {
+    console.error(error)
+  }
+
+}
+
+
+
+// write function for FM to call
+// function fmSetData(data, list = list2) {
+//   try {
+//     data = JSON.parse(data);
+//     list.queryResponse = data;
+//   } catch (error) {
+//     console.error(error);
+//   }
+// }
+
+// call main function
+if (!window.FileMaker) {
+  setTimeout(main, 30);
+} else {
+  main();
+}
+
+
+function test1() {
+  // Create a parent element
+  const parentElement = document.createElement('div');
+  document.body.appendChild(parentElement);
+
+  // Instantiate the FmResultsList class
+  fmResultsList = new FmResultsList(parentElement, testColumns);
+
+  // Check if the class is correctly instantiated
+  console.assert(fmResultsList instanceof FmResultsList, 'fmResultsList should be an instance of FmResultsList');
+
+  // Set the queryResponse and check if it's correctly set
+  fmResultsList.queryResponse = testResponse.response;
+
+  // console.assert(fmResultsList.queryResponse === testResponse, 'queryResponse should be correctly set');
+  // console.assert(fmResultsList.records === testResponse.data, 'records should be correctly set');
+
+  return fmResultsList;
+
+}
+
+function test2() {
+
+  const testColumns = [
+    { name: 'Name', type: 'text', item_field_name: 'name', searchable: true},
+    { name: 'Type', type: 'text', item_field_name: 'type', searchable: true },
+    { name: 'Price', type: 'number', item_field_name: 'Price::amount', searchable: true },
+    { name: 'Unit', type: 'text', item_field_name: 'Unit Of Measure::abbreviation', searchable: true },
+    { name: 'Add To Cart', type: 'cart-button', cart_ids: ["cart"] },
+  ];
+
+  const testRequest = {
+    "action": "read",
+    "layouts": "query: item (web picker)",
+    "limit": 5,
+    "offset":1,
+    "query": [
+      {
+        "type": "==product"
+      }
+    ]
+
+  }
+
+
+  // create another parent element
+  const parentElement = document.createElement('div');
+  document.body.appendChild(parentElement);
+
+  // create another table with same columns that will query FileMaker for data
+  fmResultsList = new FmResultsList(parentElement, testColumns, testRequest);
+  fmResultsList.requestData();
+
+  return fmResultsList
+}
+

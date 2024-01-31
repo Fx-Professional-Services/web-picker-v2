@@ -1,12 +1,21 @@
 class FmResultsList {
 
 	#queryResponse
+	#firstRequest
+	#requestScriptName = 'sub: query and callback (web picker v2)'
+	#request
 
-	constructor(parentElement, columns) {
+	constructor(parentElement, columns, request) {
 		try {
 			// set properties
 			this.columns = columns
-			this.records = []
+			this.records = [] 
+			this.searchFields = []
+			this.searchFieldsQuery = {}
+			this.timeout = null
+
+			this.totalRecordCount = 0
+			this.foundCount = 0
 
 			// draw the table
 			this.table = this.#drawTable(parentElement, columns)
@@ -16,16 +25,34 @@ class FmResultsList {
 			// add footer 
 			this.table.appendChild(this.footer)
 
+			// set request
+			if (request) {
+				this.request = request
+			}
+
+			return this;
+
 		} catch (error) {
 			throw error
 		}
 	}
 
+	// SETTERS
 	set queryResponse(response) {
 		try {
+			console.log('queryResponse', response)
 			this.#queryResponse = response
 			const { data } = response
 			this.records = data
+
+			// update totalRecordCount and foundCount
+			this.totalRecordCount = response.dataInfo.totalRecordCount
+			this.foundCount = response.dataInfo.foundCount
+
+			// delete existing rows
+			while (this.body.firstChild) {
+				this.body.removeChild(this.body.firstChild)
+			}
 
 			// draw the rows
 			this.#drawRows(this.body, this.columns, data)
@@ -36,10 +63,69 @@ class FmResultsList {
 		}
 	}
 
+	set request(request) {
+		try {
+
+			if (!this.#firstRequest) {
+					// save first request
+				this.#firstRequest = JSON.parse(JSON.stringify(request));
+				// console.log('saving first request', this.#firstRequest)
+			}
+
+			// clone request
+			this.#request = JSON.parse(JSON.stringify(request))
+
+			// initialize these, they'll change when we paginate 
+			this.limit = request.limit || 100
+			this.offset = request.offset || 1
+			this.query = request.query || []
+			// data will be returned using a callback function
+
+			// enable/disable next/previous buttons
+			if (this.offset <= 1) {
+				this.previousButton.disabled = true
+			} else {
+				this.previousButton.disabled = false
+			}
+
+			console.log('request', this.#request, 'firstrequest', this.#firstRequest)
+
+		} catch (error) {
+			throw error;
+		}
+
+
+	}
+
+	// GETTERS
 	get queryResponse() {
 		return this.#queryResponse
 	}
 
+	get request() {
+		return this.#request
+	}
+
+	get firstRequest() {
+		return this.#firstRequest
+	}
+
+	// METHODS
+	requestData() {
+		try {
+
+			if (!this.#request) {
+				throw new Error('requestData: request is required')
+			}
+			// request data from FileMaker
+			this.#requestData(this.request)
+
+		} catch (error) {
+			throw error
+		}
+	}
+
+	// PRIVATE METHODS
 	// draw the table
 	#drawTable(parentElement, columns = this.columns) {
 		try {
@@ -73,21 +159,57 @@ class FmResultsList {
 	#createHeader(columns) {
 		try {
 			const header = document.createElement('thead')
+
+			// create labels row
 			const row = document.createElement('tr')
+
+			// create search fields row
+			const searchRow = document.createElement('tr')
+
+			// add class
+			searchRow.classList.add('search-fields')
+
+			header.appendChild(searchRow)
 			header.appendChild(row)
 
 			columns.forEach(column => {
-				const { name, type, item_field_name, format } = column
+				const { name, type, item_field_name, format, searchable } = column
 				const th = document.createElement('th')
+				row.appendChild(th)
+
+				// create label
 				th.textContent = name.toString() || ''
 				th.dataset.type = type.toString() || ''
-				th.dataset.item_field_name = item_field_name.toString() || ''
+				if (item_field_name) {
+					th.dataset.item_field_name = item_field_name.toString() || ''
+				}
 
 				if (format) {
 					th.dataset.format = format.toString()
 				}
 
-				row.appendChild(th)
+				// create th for search field
+				const searchTh = document.createElement('th')
+				searchRow.appendChild(searchTh)
+
+				// append input if searchable
+				if (searchable) {
+					// create input
+					const input = document.createElement('input')
+					input.type = 'text'
+					input.placeholder = 'Search'
+					input.dataset.item_field_name = item_field_name.toString() || ''
+					searchTh.appendChild(input)
+
+					// add handlers
+					input.addEventListener('input', this.#inputHandler.bind(this))
+					input.addEventListener('keyup', this.#keyUpHandler.bind(this))
+
+
+					// add to searchFields property
+					this.searchFields.push(input)
+				}
+
 			})
 			return header
 		} catch (error) {
@@ -111,9 +233,36 @@ class FmResultsList {
 			columns.forEach(column => {
 				const { type, item_field_name, format } = column
 				const td = document.createElement('td')
-				td.textContent = fieldData[item_field_name]
+
+				// get value, the key name may have spaces
+				const value = fieldData[item_field_name]
+				td.textContent = value
 				td.dataset.type = type.toString() || ''
-				td.dataset.item_field_name = item_field_name.toString() || ''
+
+				if (item_field_name) {
+					td.dataset.item_field_name = item_field_name.toString() || ''
+				} else if (type == 'cart-button') {
+					// get the carts array 
+					const cart_ids = column.cart_ids
+
+					// loop through the carts array
+					cart_ids.forEach(cart_id => {
+						// create button
+						const button = document.createElement('button')
+						button.textContent = 'Add'
+						td.appendChild(button)
+
+						// add event listener
+						// event listener should find cart by id
+						// then call the addItem() method
+						button.addEventListener('click', () => {
+							// const cart = document.querySelector(`#${cart_id}`)
+							console.log(window[cart_id])
+							window[cart_id].addItem(fieldData)
+						})
+					})
+
+				}
 
 				if (format) {
 					td.dataset.format = format.toString()
@@ -144,6 +293,20 @@ class FmResultsList {
 		try {
 			const footer = document.createElement('tfoot')
 			const row = document.createElement('tr')
+
+			// create next/prev buttons
+			const nextButton = this.#createNextButton()
+			const previousButton = this.#createPreviousButton()
+
+			// save to private properties
+			this.nextButton = nextButton
+			this.previousButton = previousButton
+
+
+			// add button to row
+			row.appendChild(previousButton)
+			row.appendChild(nextButton)
+
 			footer.appendChild(row)
 			return footer
 		} catch (error) {
@@ -151,6 +314,214 @@ class FmResultsList {
 		}
 	}
 
+	#requestData(request) {
+		try {
+
+			console.log('requesting data from FM', request)
+
+			// request data from FileMaker
+			FileMaker.PerformScriptWithOption(
+				this.#requestScriptName,
+				JSON.stringify(request),
+				"5"
+			)
+		} catch (error) {
+			throw error;
+		}
+	}
+
+	#createNextButton() {
+		try {
+			const button = document.createElement('button')
+			button.textContent = 'Next'
+			button.addEventListener('click', () => {
+				this.#nextPage()
+			})
+			return button
+		} catch (error) {
+			throw error
+		}
+	}
+
+	#createPreviousButton() {
+		try {
+			const button = document.createElement('button')
+			button.textContent = 'Previous'
+			button.addEventListener('click', () => {
+				this.#previousPage()
+			})
+			return button
+		} catch (error) {
+			throw error
+		}
+	}
+
+	#nextPage() {
+		try {
+
+			// console.log('nextPage')
+
+			let { limit, offset } = this
+
+			// increment offset
+			offset += limit 
+
+			const request = {
+				...this.request,
+				limit,
+				offset,
+			}
+
+			this.request = request
+
+
+			// request data from FileMaker
+			this.requestData()
+
+		} catch (error) {
+			throw error
+		}
+	}
+
+	#previousPage() {
+		try {
+			// console.log('previousPage')
+
+			let { limit, offset } = this
+
+			// decrement offset
+			offset -= limit
+
+			const request = {
+				...this.request,
+				limit,
+				offset,
+			}
+
+			// if offset is 0 or less, set to 1
+			// also disable previous button
+			if (offset <= 0) { 
+				request.offset = 1
+			}
+
+			this.request = request
+
+			// console.log('request', request)
+
+			// request data from FileMaker
+			this.requestData()
+
+			// // redraw the table
+			// this.requestData()
+
+		} catch (error) {
+			throw error
+		}
+	}
+
+	#calculateNewRequest(columns, request, searchFieldsQuery) {
+		try {
+
+			// console.log('calculateNewRequest', request, searchFieldsQuery)
+
+			// reset offset
+			request.offset = 1
+
+			// build query
+			const newQuery = []
+
+			if (request.query?.length > 0) {
+							// loop through query
+				request.query.forEach(query => {
+
+					if (!query.omit) {
+					 
+						// merge query with searchFieldsQuery
+						const mergedQuery = {
+							...searchFieldsQuery,
+							...query,
+						}
+						// add to newQuery
+						newQuery.push(mergedQuery)
+
+					} else if (query.omit) {
+						// leave it unchanged and add this as a new query
+						newQuery.push(query, searchFieldsQuery)
+					}
+					
+				})
+			} else if ( Object.keys(searchFieldsQuery).length > 0) {
+				// if searchFieldsQuery has values...
+				newQuery.push(searchFieldsQuery)
+			} 
+
+
+			// update request
+			if (newQuery.length > 0) {
+				request.query = newQuery
+			} else {
+				request = this.firstRequest
+			}
+			// request.query = newQuery
+
+			return request
+
+		} catch (error) {
+			throw error
+		}
+	}
+
+	#inputHandler(event) {
+		try {
+
+			// clear timeout
+			clearTimeout(this.timeout)
+
+			// are we getting correct values for searchFieldsQuery and firstRequest?
+
+			// set timeout
+			this.timeout = setTimeout((searchFieldsQuery, firstRequest) => {
+
+				// get new request after timeout
+				const newRequest = this.#calculateNewRequest(this.columns, firstRequest, searchFieldsQuery)
+
+				this.request = newRequest
+
+				// request data from FileMaker
+				this.requestData()
+
+			}, 1000, this.searchFieldsQuery, JSON.parse(JSON.stringify(this.firstRequest)))
+
+			// calculate new request
+			//  const newRequest = this.#calculateNewRequest(this.columns, this.request, this.searchFields)
+			//  console.log('newRequest', newRequest)
+
+		} catch (error) {
+			throw error
+		}
+	}
+
+	#keyUpHandler(event) {
+		try {
+			// console.log('keyup event fired')
+			const value = event.target.value
+
+			// get item_field_name
+			const item_field_name = event.target.dataset.item_field_name
+
+			// update searchFieldsQuery
+			if(value === '') {
+				delete this.searchFieldsQuery[item_field_name]
+			} else {
+				this.searchFieldsQuery[item_field_name] = value
+			}
+
+			// console.log('searchFieldsQuery', this.searchFieldsQuery)
+
+		} catch (error) {
+			throw error
+		}
+	}
 
 }
 
