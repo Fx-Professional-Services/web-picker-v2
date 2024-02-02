@@ -65,6 +65,7 @@ class FmCart {
 			if (var_name) {
 				th.dataset.var_name = var_name.toString()
 			}
+
 			row.appendChild(th);
 		});
 

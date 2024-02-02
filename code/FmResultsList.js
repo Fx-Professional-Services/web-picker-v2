@@ -48,6 +48,13 @@ class FmResultsList {
 			this.totalRecordCount = response.dataInfo.totalRecordCount
 			this.foundCount = response.dataInfo.foundCount
 
+			// enable/disable next button
+			if (this.offset + this.limit >= this.totalRecordCount) {
+				this.nextButton.disabled = true
+			} else {
+				this.nextButton.disabled = false
+			}
+
 			// delete existing rows
 			while (this.body.firstChild) {
 				this.body.removeChild(this.body.firstChild)
@@ -189,6 +196,46 @@ class FmResultsList {
 					th.dataset.format = format.toString()
 				}
 
+				// add sort event listener
+				th.addEventListener('click', () => {
+					// get sort direction
+					const sortDirection = th.dataset.sort_direction
+
+					// get item_field_name
+					const item_field_name = th.dataset.item_field_name
+
+					// get new sort direction
+					const newSortDirection = sortDirection === 'ascend' ? 'descend' : 'ascend'
+
+					// update sort direction
+					th.dataset.sort_direction = newSortDirection
+
+
+					// update request sort order array
+					this.request.sort = [
+						{
+							fieldName: item_field_name,
+							sortOrder: newSortDirection
+						}
+					]
+
+					// request data from FileMaker
+					this.requestData()
+
+					// update header text
+					th.textContent = `${name} (${newSortDirection === 'ascend' ? 'A-Z' : 'Z-A'})`
+
+					// remove sort direction from other th
+					const ths = Array.from(row.children)
+					ths.forEach(th => {
+						if (th !== event.target && th.dataset.sort_direction) {
+							th.dataset.sort_direction = ''
+							th.textContent = th.textContent.replace(' (A-Z)', '').replace(' (Z-A)', '')
+						}
+					})
+
+				})
+
 				// create th for search field
 				const searchTh = document.createElement('th')
 				searchRow.appendChild(searchTh)
@@ -294,6 +341,8 @@ class FmResultsList {
 			const footer = document.createElement('tfoot')
 			const row = document.createElement('tr')
 
+			row.classList.add('pagination-row')
+
 			// create next/prev buttons
 			const nextButton = this.#createNextButton()
 			const previousButton = this.#createPreviousButton()
@@ -302,10 +351,16 @@ class FmResultsList {
 			this.nextButton = nextButton
 			this.previousButton = previousButton
 
+			// create td
+			const td = document.createElement('td')
+			td.colSpan = this.columns.length
 
-			// add button to row
-			row.appendChild(previousButton)
-			row.appendChild(nextButton)
+			// add buttons to td
+			td.appendChild(previousButton)
+			td.appendChild(nextButton)
+
+			// add td to row
+			row.appendChild(td)
 
 			footer.appendChild(row)
 			return footer
@@ -331,6 +386,7 @@ class FmResultsList {
 	#createNextButton() {
 		try {
 			const button = document.createElement('button')
+			button.classList.add('next-button')
 			button.textContent = 'Next'
 			button.addEventListener('click', () => {
 				this.#nextPage()
@@ -344,6 +400,7 @@ class FmResultsList {
 	#createPreviousButton() {
 		try {
 			const button = document.createElement('button')
+			button.classList.add('previous-button')
 			button.textContent = 'Previous'
 			button.addEventListener('click', () => {
 				this.#previousPage()
@@ -418,11 +475,13 @@ class FmResultsList {
 		try {
 
 			// reset offset
-			request.offset = 1
+			request.offset = 1 
+			console.log(request)
 
 			// build query
 			const newQuery = []
 
+			// build a new query array
 			if (request.query?.length > 0) {
 							// loop through query
 				request.query.forEach(query => {
@@ -452,8 +511,6 @@ class FmResultsList {
 			// update request
 			if (newQuery.length > 0) {
 				request.query = newQuery
-			} else {
-				request = this.firstRequest
 			}
 			// request.query = newQuery
 
@@ -470,10 +527,20 @@ class FmResultsList {
 			// clear timeout
 			clearTimeout(this.timeout)
 
-			// are we getting correct values for searchFieldsQuery and firstRequest?
+			// clone these objects
+			const firstRequest = JSON.parse(JSON.stringify(this.firstRequest))
+			const lastRequest = JSON.parse(JSON.stringify(this.request))
 
 			// set timeout
-			this.timeout = setTimeout((searchFieldsQuery, firstRequest) => {
+			this.timeout = setTimeout((searchFieldsQuery, firstRequest, lastRequest) => {
+
+				// extract the sort array from lastRequest
+				if (lastRequest.sort) {
+					// add it to the new request
+					const sort = lastRequest.sort
+					firstRequest.sort = sort
+				}
+
 
 				// get new request after timeout
 				const newRequest = this.#calculateNewRequest(this.columns, firstRequest, searchFieldsQuery)
@@ -483,7 +550,7 @@ class FmResultsList {
 				// request data from FileMaker
 				this.requestData()
 
-			}, 1000, this.searchFieldsQuery, JSON.parse(JSON.stringify(this.firstRequest)))
+			}, 1000, this.searchFieldsQuery, firstRequest, lastRequest)
 
 			// calculate new request
 			//  const newRequest = this.#calculateNewRequest(this.columns, this.request, this.searchFields)

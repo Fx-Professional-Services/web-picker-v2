@@ -45,22 +45,6 @@ function initializePicker(config) {
 		return true;
 	}
 
-	// add button to get picker results
-	button = document.createElement('button');
-	button.innerHTML = 'Done';
-	button.onclick = () => getPickerResults();
-
-
-	// add button to cancel
-	cancelButton = document.createElement('button');
-	cancelButton.innerHTML = 'Cancel';
-	cancelButton.onclick = () => {
-		// send result to filemaker
-		sendResultToFileMaker({ user_canceled: true });
-		// reset
-		reset(cartsArray);
-	}
-
 	// create carts
 	carts.forEach((cartJson, index) => {
 
@@ -73,6 +57,22 @@ function initializePicker(config) {
 
 			// add cart to carts array
 			cartsArray.push(cart);
+
+			// add button to get picker results
+			button = document.createElement('button');
+			button.innerHTML = 'Done';
+			button.onclick = () => getPickerResults();
+
+
+			// add button to cancel
+			cancelButton = document.createElement('button');
+			cancelButton.innerHTML = 'Cancel';
+			cancelButton.onclick = () => {
+				// send result to filemaker
+				sendResultToFileMaker({ user_canceled: true });
+				// reset
+				reset(cartsArray);
+			}
 
 			// add buttons to a tfooter and insert into the cart
 			const tfoot = document.createElement('tfoot');
@@ -92,8 +92,10 @@ function initializePicker(config) {
 
 	});
 
-	// document.body.appendChild(cancelButton);
-	// document.body.appendChild(button);
+
+
+
+
 
 
 
