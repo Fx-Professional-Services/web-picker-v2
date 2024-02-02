@@ -71,6 +71,7 @@ class FmCart {
 		// add column for delete button
 		const th = document.createElement('th');
 		th.textContent = 'Delete';
+		th.classList.add('last-column');
 		row.appendChild(th);
 
 		return header;

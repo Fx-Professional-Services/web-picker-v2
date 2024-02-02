@@ -168,10 +168,15 @@ class FmResultsList {
 			header.appendChild(searchRow)
 			header.appendChild(row)
 
-			columns.forEach(column => {
+			columns.forEach((column, i) => {
 				const { name, type, item_field_name, format, searchable } = column
 				const th = document.createElement('th')
 				row.appendChild(th)
+
+				// add class to last column
+				if (i === columns.length - 1) {
+					th.classList.add('last-column')
+				}
 
 				// create label
 				th.textContent = name.toString() || ''

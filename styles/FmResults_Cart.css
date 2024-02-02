@@ -51,10 +51,9 @@ table button {
     font-size: 1em;
     font-family: sans-serif;
     cursor: pointer;
-    padding: 0 1em;
     border-radius: 0;
     background-color: transparent;
-    text-align: left;
+    text-align: center;
 }
 
 /* put pagination buttons next to each other in row */
@@ -93,4 +92,17 @@ tfoot button {
     color: #4b4b4b;
     text-align: left;
     padding: 0;
+}
+
+/* Make the table headers capitalized */
+.styled-table th {
+    text-transform: capitalize;
+}
+
+/* 
+    Center the last column (Add and Remove to cart buttons).
+    You can comment this section if you don't need to center the last column.
+*/
+.last-column {
+    text-align: center;
 }

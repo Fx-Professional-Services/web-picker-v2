@@ -45,26 +45,6 @@ function initializePicker(config) {
 		return true;
 	}
 
-	// create carts
-	carts.forEach((cartJson, index) => {
-
-		try {
-
-			// declare to window variable, will change this later 
-			const cart = new FmCart(cartJson.rows, cartJson.columns, cartJson.idKeyName, template, options);
-			window[`cart${index}`] = cart;
-			document.body.appendChild(cart.cart);
-
-			// add cart to carts array
-			cartsArray.push(cart);
-
-		} catch (error) {
-			console.error(error);
-			throw error;
-		};
-
-	});
-
 	// add button to get picker results
 	button = document.createElement('button');
 	button.innerHTML = 'Done';
@@ -80,8 +60,40 @@ function initializePicker(config) {
 		// reset
 		reset(cartsArray);
 	}
-	document.body.appendChild(cancelButton);
-	document.body.appendChild(button);
+
+	// create carts
+	carts.forEach((cartJson, index) => {
+
+		try {
+
+			// declare to window variable, will change this later 
+			const cart = new FmCart(cartJson.rows, cartJson.columns, cartJson.idKeyName, template, options);
+			window[`cart${index}`] = cart;
+			document.body.appendChild(cart.cart);
+
+			// add cart to carts array
+			cartsArray.push(cart);
+
+			// add buttons to a tfooter and insert into the cart
+			const tfoot = document.createElement('tfoot');
+			const tr = document.createElement('tr');
+			const td = document.createElement('td');
+			td.colSpan = cartJson.columns.length + 1; // +1 for the delete column
+			td.appendChild(cancelButton);
+			td.appendChild(button);
+			tr.appendChild(td);
+			tfoot.appendChild(tr);
+			cart.cart.appendChild(tfoot);
+
+		} catch (error) {
+			console.error(error);
+			throw error;
+		};
+
+	});
+
+	// document.body.appendChild(cancelButton);
+	// document.body.appendChild(button);
 
 
 
@@ -190,7 +202,7 @@ function validateConfig(config) {
 
 	if (!items.idKeyName) {
 		errorMesageArray.push("No items.idKeyName string was provided");
-	} 
+	}
 
 	if (carts) {
 
