@@ -30,6 +30,10 @@ class FmCart {
 			this.cart);
 	}
 
+	/**
+	 * Adds an item to the cart.
+	 * @param {Object} itemJson - The JSON object representing the item to be added.
+	 */
 	addItem(itemJson) {
 		// this.selectedItems = 
 		this.#selectItem(itemJson, this.id, this.selectedItems, this.columns, this.cart);
