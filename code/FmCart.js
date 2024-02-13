@@ -4,6 +4,7 @@ class FmCart {
 		this.id = { key_name: idKeyName };
 		this.columns = cols;
 		this.rows = rows || [];
+		this.sums = {};
 		this.template = template;
 		this.auto_submit = options?.auto_submit || false;
 		this.maxResults = options?.max_results || Infinity;
@@ -55,6 +56,7 @@ class FmCart {
 			th.textContent = name.toString() || '';
 			th.dataset.type = type.toString() || '';
 			th.dataset.item_field_name = item_field_name?.toString() || '';
+			th.id = `col-${name}`
 			// th.dataset.editable = Boolean(editable);
 
 			if (editable) {
@@ -99,7 +101,7 @@ class FmCart {
 		try {
 			table.classList.add('fm-cart', 'styled-table');
 
-			// add table body
+			// create table body
 			const tbody = document.createElement('tbody');
 
 			const selectedItems = new Map();
@@ -107,11 +109,17 @@ class FmCart {
 			// create header row
 			const header = this.#createHeader(columns);
 
+			// create footer
+			const footer = this.#createFooter(columns);
+
 			// append header to table
 			table.appendChild(header);
 
 			// append tbody to table
 			table.appendChild(tbody);
+
+			// append footer to table
+			table.appendChild(footer);
 
 			// create rows and append to table
 			rows.forEach(row => {
@@ -119,6 +127,8 @@ class FmCart {
 				this.#selectItem(row, id, selectedItems, columns, table);
 
 			});
+
+
 
 			return selectedItems;
 
@@ -140,7 +150,7 @@ class FmCart {
 		let id_key = id.key_name;
 
 		if (selectedItems.size >= this.maxResults) {
-		// if the count of selectedItems is greater than or equal to maxResults, do nothing
+			// if the count of selectedItems is greater than or equal to maxResults, do nothing
 
 			return selectedItems;
 
@@ -184,10 +194,16 @@ class FmCart {
 
 		function addItemToCart(table, itemJson, columns, id) {
 
+			// get table body
+			const tbody = table;
+
 			// create row element,
 			// includes vars object to store values for variables
 			// and event listener to update vars object when variableChanged event is emitted
 			const tr = this.#createTr();
+
+			// define array of callbacks to fire sumColumn function
+			const callbacks = [];
 
 			// get id value from itemJson data
 			const id_key = id.key_name;
@@ -213,7 +229,7 @@ class FmCart {
 				const td = this.#createTd(column);
 
 				// get data about this column
-				const { item_field_name, type, default_value, var_name } = column;
+				const { item_field_name, type, default_value, var_name, add_sum } = column;
 
 				// find the value for this column in the itemJson object
 				const value = itemJson[item_field_name] || default_value || '';
@@ -234,6 +250,19 @@ class FmCart {
 				// update vars object
 				if (var_name) {
 					tr.vars[var_name] = typedValue;
+				}
+
+				if (add_sum) {
+
+					// adding a callback so that the sumColumn function is fired after all the cells are created
+
+					//sum the column
+					const callback = () => {
+						this.#sumColumn(column.name, column.max_sum);
+					}
+
+					// add callback to array
+					callbacks.push(callback);
 				}
 
 				// append to tr
@@ -258,7 +287,12 @@ class FmCart {
 			tr.appendChild(td);
 
 			// append tr to table
-			table.appendChild(tr);
+			tbody.appendChild(tr);
+
+			// fire sumColumn function
+			callbacks.forEach(callback => {
+				callback();
+			});
 
 
 			return id_value;
@@ -391,7 +425,14 @@ class FmCart {
 		const td = document.createElement('td');
 
 		// get data about this column
-		const { item_field_name, type, editable, default_value, var_name, format } = column;
+		const { name,
+			item_field_name,
+			type, editable,
+			default_value,
+			var_name,
+			format,
+			add_sum,
+			max_sum } = column;
 
 		// set editable
 		td.contentEditable = editable;
@@ -406,6 +447,7 @@ class FmCart {
 		td.dataset.item_field_name = item_field_name;
 		td.dataset.editable = editable;
 		td.dataset.format = format;
+		td.headers = `col-${name}`;
 
 		if (item_field_name) {
 			td.dataset.item_field_name = item_field_name;
@@ -418,7 +460,7 @@ class FmCart {
 		// if this is editable and has a var_name, add an event listener 
 		// to emit an event when the value is changed
 		if (editable && var_name) {
-			td.addEventListener('input', handleInput);
+			td.addEventListener('input', handleInput.bind(this));
 		}
 
 		function handleInput(event) {
@@ -442,9 +484,41 @@ class FmCart {
 
 			// dispatch event
 			td.dispatchEvent(customEvent);
+			console.log('dispatching variableChanged event', column)
+
+			// if column is summed, sum the column
+			if (add_sum) {
+				console.log('summing column', name)
+				this.#sumColumn(name, max_sum);
+			}
 		}
 
 		return td;
+	}
+
+	#createFooter(columns) {
+		// create footer, row
+		const tfoot = document.createElement('tfoot');
+		const tr = document.createElement('tr');
+
+		// append tr to tfoot
+		tfoot.appendChild(tr);
+
+		// loop through columns
+		columns.forEach((column) => {
+			// create td
+			const td = this.#createTd(column);
+
+			if (column['add_sum']) {
+				// add a class to the td
+				td.classList.add('sum');
+			}
+
+			// append td to tfoot
+			tr.appendChild(td);
+		});
+
+		return tfoot;
 	}
 
 	#updateExpressions(tr) {
@@ -488,6 +562,53 @@ class FmCart {
 
 		this.selectedItems = selectedItems;
 
+		// fire sumColumn function
+		this.columns.forEach(column => {
+			if (column.add_sum) {
+				this.#sumColumn(column.name, column.max_sum);
+			}
+		});
+
 		return selectedItems;
 	}
+
+	#sumColumn(columnName, maxSum = Infinity) {
+		// get the column
+		const column = this.cart.querySelectorAll(`tbody td[headers="col-${columnName}"]`);
+
+		// get the values
+		const values = Array.from(column).map(td => parseFloat(td.textContent) || 0);
+
+		// sum the values
+		const sum = values.reduce((a, b) => a + b, 0);
+
+		// select the footer cell
+		const footerCell = this.cart.querySelector(`tfoot td[headers="col-${columnName}"]`);
+
+		// set the value
+		footerCell.textContent = sum.toFixed(2);
+
+		// set value on this
+		this.sums[columnName] = sum.toFixed(2);
+
+		// create sumUpdated event
+		const event = new CustomEvent('sumUpdated', {
+			bubbles: true,
+			detail: {
+				columnName,
+				sum
+			}
+		});
+
+		// dispatch event
+		footerCell.dispatchEvent(event);
+
+		// alert if sum is greater than maxSum
+		if (sum > maxSum) {
+			alert(`The sum of ${columnName} is greater than ${maxSum}`);
+		}
+
+		return footerCell;
+	}
+
 }

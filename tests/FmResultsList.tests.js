@@ -5,7 +5,13 @@
 const testColumns = [
 	{ name: 'ID', type: 'number', item_field_name: 'id' },
 	{ name: 'Name', type: 'text', item_field_name: 'name' },
-	{ name: 'Price', type: 'number', item_field_name: 'price' },
+  { name: 'Price', type: 'number', item_field_name: 'price' },
+  {
+    cart_ids: ["cart0"],
+    name: "select",
+    type: "cart-button"
+  }
+
 ];
 
 const testResponse = {
@@ -162,10 +168,10 @@ function main() {
   try {
 
     // create first table with test data
-    // list1 = test1();
+    list1 = test1();
 
     // create second table tha will query for its own data
-    list2 = test2();
+    // list2 = test2();
 
 
 
