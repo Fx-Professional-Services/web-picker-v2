@@ -4,7 +4,7 @@ let cartsArray = [];
 let button;
 
 // initialize picker
-function initializePicker(config) {
+function initializePicker(config, requestData = true) {
 
 
 	// parse config if needed
@@ -38,7 +38,9 @@ function initializePicker(config) {
 	fmResultsList = new FmResultsList(parentElement, columns, request);
 
 	// tell table perform request to get data from FileMaker
-	fmResultsList.requestData();
+	if (requestData) {
+		fmResultsList.requestData();
+	}
 
 	// guard against no carts
 	if (!carts) {
@@ -53,6 +55,8 @@ function initializePicker(config) {
 			// declare to window variable, will change this later 
 			const cart = new FmCart(cartJson.rows, cartJson.columns, cartJson.idKeyName, template, options);
 			window[`cart${index}`] = cart;
+
+			// add cart to DOM
 			document.body.appendChild(cart.cart);
 
 			// add cart to carts array
@@ -61,7 +65,13 @@ function initializePicker(config) {
 			// add button to get picker results
 			button = document.createElement('button');
 			button.innerHTML = 'Done';
-			button.onclick = () => getPickerResults();
+			button.onclick = () => {
+				const results = getPickerResults(cartsArray);
+
+				if (!results.cart0.validation_errors) {
+					reset(cartsArray);
+				}
+			}
 
 
 			// add button to cancel
@@ -75,7 +85,7 @@ function initializePicker(config) {
 			}
 
 			// add buttons to a tfooter and insert into the cart
-			const tfoot = document.createElement('tfoot');
+			const tfoot = cart.cart.querySelector('tfoot') || document.createElement('tfoot');
 			const tr = document.createElement('tr');
 			const td = document.createElement('td');
 			td.colSpan = cartJson.columns.length + 1; // +1 for the delete column
@@ -95,13 +105,17 @@ function initializePicker(config) {
 
 
 
-
-
-
-
-
 	// add listener for maxResults event 
 	document.addEventListener('maxResults', handleMaxResults);
+
+	// add listener for validationErrors event
+	document.addEventListener('validationErrors', handleValidationErrors);
+
+	return {
+		fmResultsList,
+		cartsArray,
+		button
+	};
 
 }
 
@@ -112,11 +126,13 @@ function handleMaxResults(event) {
 	}
 }
 
-// return picker results
-function getPickerResults(carts = cartsArray) {
+function handleValidationErrors(event) {
+	console.log("validationErrors event", event.detail);
+	alert(event.detail.errors.join("\n"))
+}
 
-	let blankScriptName = 'blank script';
-	let callbackScriptName = 'return parameter as result';
+// generate object of results for FileMaker
+function getPickerResults(carts = cartsArray, reset = true) {
 
 	let results = {}
 	carts.forEach((cart, index) => {
@@ -126,15 +142,19 @@ function getPickerResults(carts = cartsArray) {
 	// send results to FileMaker
 	sendResultToFileMaker(results);
 
-	// reset
-	reset(carts);
+	return results;
 
 }
 
+// send results to paused FileMaker script
 function sendResultToFileMaker(result) {
 
 	const blankScriptName = 'blank script';
 	const callbackScriptName = 'return parameter as result';
+
+	if (!window.FileMaker) {
+		return;
+	}
 
 	try {
 		// return results w/ option 5
@@ -169,7 +189,7 @@ function reset(carts) {
 	document.removeEventListener('maxResults', handleMaxResults);
 }
 
-// set data from FileMaker
+// set data from FileMaker to the results list
 function fmSetData(data, list = fmResultsList) {
 	try {
 		data = JSON.parse(data);
@@ -179,7 +199,7 @@ function fmSetData(data, list = fmResultsList) {
 	}
 }
 
-// helper functions
+// helper function to validate config
 function validateConfig(config) {
 	const { items, carts, template, options } = config;
 
@@ -192,9 +212,9 @@ function validateConfig(config) {
 		errorMesageArray.push("No items object was provided");
 	}
 
-	if (!items.request) {
-		errorMesageArray.push("No items.request object was provided");
-	}
+	// if (!items.request) {
+	// 	errorMesageArray.push("No items.request object was provided");
+	// }
 
 	if (!items.columns) {
 		errorMesageArray.push("No items.columns array was provided");

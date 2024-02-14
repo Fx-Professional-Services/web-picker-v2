@@ -304,7 +304,6 @@ class FmResultsList {
 						// event listener should find cart by id
 						// then call the addItem() method
 						button.addEventListener('click', () => {
-							// const cart = document.querySelector(`#${cart_id}`)
 							window[cart_id].addItem(fieldData)
 						})
 					})

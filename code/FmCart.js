@@ -8,8 +8,7 @@ class FmCart {
 		this.template = template;
 		this.auto_submit = options?.auto_submit || false;
 		this.maxResults = options?.max_results || Infinity;
-		console.log('maxResults', this.maxResults)
-		console.log('options', options)
+
 
 		try {
 			// draw the header and rows
@@ -77,7 +76,7 @@ class FmCart {
 
 		// add column for delete button
 		const th = document.createElement('th');
-		th.textContent = 'Delete';
+		// th.textContent = 'Delete';
 		th.classList.add('last-column');
 		row.appendChild(th);
 
@@ -139,6 +138,8 @@ class FmCart {
 	}
 
 	#selectItem(itemJson, id, selectedItems = new Map(), columns, cart) {
+
+
 		// get table body
 		const table = cart.querySelector('tbody');
 
@@ -184,7 +185,6 @@ class FmCart {
 				}
 			});
 
-			console.log('dispatching maxResults event', customEvent)
 
 			// dispatch event
 			cart.dispatchEvent(customEvent);
@@ -192,6 +192,16 @@ class FmCart {
 
 		return selectedItems;
 
+
+		/**
+		 * Adds an item to the cart table.
+		 * 
+		 * @param {HTMLElement} table - The table element where the item will be added.
+		 * @param {object} itemJson - The JSON object representing the item.
+		 * @param {Array} columns - An array of column objects defining the structure of the table.
+		 * @param {object} id - The ID object containing the key name for the item ID.
+		 * @returns {string} - The ID value of the added item.
+		 */
 		function addItemToCart(table, itemJson, columns, id) {
 
 			// get table body
@@ -258,6 +268,7 @@ class FmCart {
 
 					//sum the column
 					const callback = () => {
+
 						this.#sumColumn(column.name, column.max_sum);
 					}
 
@@ -271,6 +282,7 @@ class FmCart {
 
 			// evaluate expressions
 			this.#updateExpressions(tr);
+
 
 			// create delete button
 			const deleteButton = document.createElement('button');
@@ -303,12 +315,15 @@ class FmCart {
 	#returnSelectedItems(selectedItems, template = this.template, id, columns, cart) {
 		// loop through selectedItems Map
 		const results = [];
+		const errors = [];
+		const columnsToValidate = columns.filter(column => column.max_sum);
+
 		for (const [key, value] of selectedItems) {
 
-			// start with the value
-			const result = value;
+			// start with a clone of the itemJson
+			const result = { ...value };
 
-			// add the id to data
+			// add id and name it after the key_name
 			result[id.key_name] = key;
 
 			// transform the item
@@ -317,6 +332,40 @@ class FmCart {
 			// add to results
 			results.push(transformed);
 		}
+
+		// validate the sums
+		columnsToValidate.forEach(column => {
+			const { name, max_sum, var_name, item_field_name } = column;
+			const sum = this.sums[var_name || item_field_name || name];
+
+			if (max_sum > 0 && sum > max_sum) {
+				errors.push(`The sum of ${name} is greater than ${max_sum}`);
+			}
+		});
+
+		// alert if there are errors
+		if (errors.length > 0) {
+			// alert(errors.join('\n'));
+
+			// add to result
+			results.validation_errors = errors;
+
+			// emit event
+			const customEvent = new CustomEvent('validationErrors', {
+
+				// allow event to bubble up
+				bubbles: true,
+
+				detail: {
+					errors
+				}
+			});
+
+			// dispatch event
+			cart.dispatchEvent(customEvent);
+		}
+
+		console.log('results', results);
 
 		// return results
 		return results;
@@ -401,7 +450,9 @@ class FmCart {
 		// and stop the event from bubbling up
 		// and update expressions
 		//	- get all expression cells
-		tr.addEventListener('variableChanged', event => {
+		tr.addEventListener('variableChanged', handleVariableChanged.bind(this));
+
+		function handleVariableChanged(event) {
 
 			event.stopPropagation();
 
@@ -415,7 +466,15 @@ class FmCart {
 			// update expressions
 			this.#updateExpressions(tr);
 
-		});
+			// fire sumColumn function for any colums that have add_sum
+			this.columns.forEach(column => {
+				if (column.add_sum) {
+					this.#sumColumn(column.name, column.max_sum);
+				}
+			});
+
+
+		}
 
 		return tr;
 	}
@@ -484,18 +543,18 @@ class FmCart {
 
 			// dispatch event
 			td.dispatchEvent(customEvent);
-			console.log('dispatching variableChanged event', column)
 
-			// if column is summed, sum the column
-			if (add_sum) {
-				console.log('summing column', name)
-				this.#sumColumn(name, max_sum);
-			}
 		}
 
 		return td;
 	}
 
+	/**
+	 * Creates a footer element with a row containing table cells based on the given columns.
+	 * includes sum cells for columns with add_sum set to true.
+	 * @param {Array} columns - An array of column objects.
+	 * @returns {HTMLElement} - The created tfoot element.
+	 */
 	#createFooter(columns) {
 		// create footer, row
 		const tfoot = document.createElement('tfoot');
@@ -573,11 +632,28 @@ class FmCart {
 	}
 
 	#sumColumn(columnName, maxSum = Infinity) {
+
+		// if maxSum is not a number, set to infinity
+		if (typeof maxSum !== 'number' || maxSum <= 0) {
+			maxSum = Infinity;
+		}
+
 		// get the column
 		const column = this.cart.querySelectorAll(`tbody td[headers="col-${columnName}"]`);
 
+		// get the column config
+		const columnConfig = this.columns.find(column => column.name === columnName);
+		const { var_name, item_field_name } = columnConfig;
+
 		// get the values
-		const values = Array.from(column).map(td => parseFloat(td.textContent) || 0);
+		const values = Array.from(column).map(td => {
+			let content = td.textContent;
+			// remove all $ if present
+			content = content.replace(/\$/g, '');
+
+			const value = parseFloat(content) || 0;
+			return value;
+		});
 
 		// sum the values
 		const sum = values.reduce((a, b) => a + b, 0);
@@ -589,7 +665,7 @@ class FmCart {
 		footerCell.textContent = sum.toFixed(2);
 
 		// set value on this
-		this.sums[columnName] = sum.toFixed(2);
+		this.sums[var_name || item_field_name || columnName] = sum.toFixed(2);
 
 		// create sumUpdated event
 		const event = new CustomEvent('sumUpdated', {
@@ -605,7 +681,7 @@ class FmCart {
 
 		// alert if sum is greater than maxSum
 		if (sum > maxSum) {
-			alert(`The sum of ${columnName} is greater than ${maxSum}`);
+			console.error(`The sum of ${columnName} is greater than ${maxSum}`);
 		}
 
 		return footerCell;
