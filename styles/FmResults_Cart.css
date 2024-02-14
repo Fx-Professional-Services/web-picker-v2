@@ -102,3 +102,13 @@ table button {
         padding: 0;
 }
 
+/* format the input elements inside td */
+.fm-cart input {
+    width: 100%;
+    padding: 0.5em;
+    margin: 0;
+    border: none;
+    background-color: transparent;
+    /* collapse */
+    border-collapse: collapse;
+}

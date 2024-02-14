@@ -13,24 +13,41 @@ const cartColumns = [
 		editable: true,
 		format: 'currency',
 		var_name: 'price',
-		add_sum: true
+		add_sum: true,
+		summary_format_locale: 'en-US',
+		summary_format_options: {
+			style: 'currency',
+			currency: 'USD'
+		},
 	},
 	{
 		name: 'Quantity (max 10)',
 		type: 'number',
 		item_field_name: 'quantity',
 		editable: true,
-		format: 'number',
+		input_attributes: {
+			min: 1,
+			max: 10
+		},
 		var_name: 'quantity',
 		default_value: 1,
 		add_sum: true,
-		max_sum: 10
+		max_sum: 10,
+		summary_format_locale: 'en-US',
+		summary_format_options: {
+			style: 'decimal',
+			currency: 'USD'
+		},
 	}, {
 		name: 'Subtotal',
 		type: 'expression',
 		item_field_name: 'subtotal',
-		editable: false,
-		format: 'currency',
+		editable: true,
+		summary_format_locale: 'en-US',
+		summary_format_options: {
+			style: 'currency',
+			currency: 'USD'
+		},
 		var_name: 'subtotal',
 		expression: '`$ ${(vars.quantity * vars.price).toFixed(2)}`',
 		add_sum: true,

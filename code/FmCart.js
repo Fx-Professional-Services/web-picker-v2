@@ -237,6 +237,7 @@ class FmCart {
 				// create td element
 				// includes event listener to emit variableChanged event when value is changed
 				const td = this.#createTd(column);
+				const element = td.querySelector('input') || td;
 
 				// get data about this column
 				const { item_field_name, type, default_value, var_name, add_sum } = column;
@@ -255,7 +256,11 @@ class FmCart {
 				}
 
 				// set value
-				td.textContent = typedValue;
+				if (element.tagName === 'INPUT') {
+					element.value = typedValue;
+				} else {
+					element.textContent = typedValue;
+				}
 
 				// update vars object
 				if (var_name) {
@@ -426,7 +431,10 @@ class FmCart {
 			const { var_name } = column;
 
 			// get the value from the row
-			const value = row.querySelector(`td[data-var_name="${var_name}"]`).textContent;
+			const td = row.querySelector(`td[data-var_name="${var_name}"]`)
+
+			// get the value
+			const value = td.querySelector('input')?.value || td.textContent;
 
 			// set the value on the item
 			vars[var_name] = value;
@@ -479,7 +487,7 @@ class FmCart {
 		return tr;
 	}
 
-	#createTd(column) {
+	#createTd(column, tablePart = 'body') {
 		// create td
 		const td = document.createElement('td');
 
@@ -487,14 +495,22 @@ class FmCart {
 		const { name,
 			item_field_name,
 			type, editable,
-			default_value,
 			var_name,
 			format,
 			add_sum,
 			max_sum } = column;
 
 		// set editable
-		td.contentEditable = editable;
+		if (editable && type !== 'expression') {
+			// create input
+			const input = document.createElement('input');
+			input.type = type;
+			// append input to td
+			td.appendChild(input);
+
+			// add event listeners
+			input.addEventListener('change', handleChange.bind(this));
+		}
 
 		// set var_name so we can get the value later
 		if (var_name) {
@@ -516,21 +532,24 @@ class FmCart {
 			td.dataset.expression = column.expression;
 		}
 
-		// if this is editable and has a var_name, add an event listener 
-		// to emit an event when the value is changed
-		if (editable && var_name) {
-			td.addEventListener('input', handleInput.bind(this));
-		}
 
-		function handleInput(event) {
+
+		function handleChange(event) {
+
+			// get the column name
+			const columnName = event.target.parentElement.headers.split('-')[1];
+
+			// get column object 
+			const columnObject = this.columns.find(column => column.name === columnName);
+
 			// get the var_name
-			const var_name = event.target.dataset.var_name;
+			const { var_name } = columnObject;
 
-			// get the value
-			const value = event.target.textContent;
+			const value = event.target.value;
+
 
 			// create event
-			const customEvent = new CustomEvent('variableChanged', {
+			const variableChangedEvent = new CustomEvent('variableChanged', {
 
 				// allow event to bubble up
 				bubbles: true,
@@ -542,8 +561,7 @@ class FmCart {
 			});
 
 			// dispatch event
-			td.dispatchEvent(customEvent);
-
+			td.dispatchEvent(variableChangedEvent);
 		}
 
 		return td;
@@ -567,6 +585,9 @@ class FmCart {
 		columns.forEach((column) => {
 			// create td
 			const td = this.#createTd(column);
+
+			// delete the editable attribute
+			td.removeAttribute('contenteditable');
 
 			if (column['add_sum']) {
 				// add a class to the td
@@ -597,7 +618,8 @@ class FmCart {
 			// evaluate the expression
 			const evaluated = eval(expression);
 
-			// set the value
+			// set the value on the element
+			// may be an input or a td
 			cell.textContent = evaluated;
 
 			// update vars
@@ -643,13 +665,16 @@ class FmCart {
 
 		// get the column config
 		const columnConfig = this.columns.find(column => column.name === columnName);
-		const { var_name, item_field_name } = columnConfig;
+		const { var_name, item_field_name, summary_format_locale: locale, summary_format_options: format_options } = columnConfig;
 
 		// get the values
 		const values = Array.from(column).map(td => {
-			let content = td.textContent;
-			// remove all $ if present
-			content = content.replace(/\$/g, '');
+
+			let element = td.querySelector('input') || td;
+			let content = element.value || element.textContent;
+
+			// remove all non-numeric characters
+			content = content.replace(/[^0-9.]/g, '');
 
 			const value = parseFloat(content) || 0;
 			return value;
@@ -661,8 +686,14 @@ class FmCart {
 		// select the footer cell
 		const footerCell = this.cart.querySelector(`tfoot td[headers="col-${columnName}"]`);
 
+
 		// set the value
-		footerCell.textContent = sum.toFixed(2);
+		if (locale && format_options) {
+			const formatter = new Intl.NumberFormat(locale, format_options);
+			footerCell.textContent = formatter.format(sum);
+		} else {
+			footerCell.textContent = sum
+		}
 
 		// set value on this
 		this.sums[var_name || item_field_name || columnName] = sum.toFixed(2);
