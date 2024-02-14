@@ -1,11 +1,14 @@
 class FmCart {
-	constructor(rows, cols, idKeyName, template) {
+	constructor(rows, cols, idKeyName, template, options) {
 		this.cart = document.createElement('table');
 		this.id = { key_name: idKeyName };
 		this.columns = cols;
-		this.rows = rows;
+		this.rows = rows || [];
+		this.sums = {};
 		this.template = template;
-		// this.selectedItems;
+		this.auto_submit = options?.auto_submit || false;
+		this.maxResults = options?.max_results || Infinity;
+
 
 		try {
 			// draw the header and rows
@@ -27,8 +30,11 @@ class FmCart {
 			this.cart);
 	}
 
+	/**
+	 * Adds an item to the cart.
+	 * @param {Object} itemJson - The JSON object representing the item to be added.
+	 */
 	addItem(itemJson) {
-		console.log('addItem', itemJson)
 		// this.selectedItems = 
 		this.#selectItem(itemJson, this.id, this.selectedItems, this.columns, this.cart);
 	}
@@ -49,7 +55,13 @@ class FmCart {
 			th.textContent = name.toString() || '';
 			th.dataset.type = type.toString() || '';
 			th.dataset.item_field_name = item_field_name?.toString() || '';
-			th.dataset.editable = Boolean(editable);
+			th.id = `col-${name}`
+			// th.dataset.editable = Boolean(editable);
+
+			if (editable) {
+				// add editable attribute
+				th.setAttribute('editable', '')
+			}
 
 			if (format) {
 				th.dataset.format = format.toString();
@@ -58,12 +70,14 @@ class FmCart {
 			if (var_name) {
 				th.dataset.var_name = var_name.toString()
 			}
+
 			row.appendChild(th);
 		});
 
 		// add column for delete button
 		const th = document.createElement('th');
-		th.textContent = 'Delete';
+		// th.textContent = 'Delete';
+		th.classList.add('last-column');
 		row.appendChild(th);
 
 		return header;
@@ -86,7 +100,7 @@ class FmCart {
 		try {
 			table.classList.add('fm-cart', 'styled-table');
 
-			// add table body
+			// create table body
 			const tbody = document.createElement('tbody');
 
 			const selectedItems = new Map();
@@ -94,11 +108,17 @@ class FmCart {
 			// create header row
 			const header = this.#createHeader(columns);
 
+			// create footer
+			const footer = this.#createFooter(columns);
+
 			// append header to table
 			table.appendChild(header);
 
 			// append tbody to table
 			table.appendChild(tbody);
+
+			// append footer to table
+			table.appendChild(footer);
 
 			// create rows and append to table
 			rows.forEach(row => {
@@ -106,6 +126,8 @@ class FmCart {
 				this.#selectItem(row, id, selectedItems, columns, table);
 
 			});
+
+
 
 			return selectedItems;
 
@@ -116,6 +138,8 @@ class FmCart {
 	}
 
 	#selectItem(itemJson, id, selectedItems = new Map(), columns, cart) {
+
+
 		// get table body
 		const table = cart.querySelector('tbody');
 
@@ -126,12 +150,14 @@ class FmCart {
 		let id_value;
 		let id_key = id.key_name;
 
-		console.log('selectItem', itemJson, id, selectedItems, columns, cart)
+		if (selectedItems.size >= this.maxResults) {
+			// if the count of selectedItems is greater than or equal to maxResults, do nothing
 
-		// add item to cart if it's not already in selectedItems map
-		if (selectedItems.has(itemJson[id_key])) {
+			return selectedItems;
+
+		} else if (selectedItems.has(itemJson[id_key])) {
+			// add item to cart if it's not already in selectedItems map
 			// do nothing
-			console.log('item already in cart');
 			return selectedItems;
 
 		} else if (cart && columns && id) {
@@ -146,14 +172,48 @@ class FmCart {
 
 		this.selectedItems = selectedItems;
 
+		// emit event
+		if (selectedItems.size >= this.maxResults) {
+			const customEvent = new CustomEvent('maxResults', {
+
+				// allow event to bubble up
+				bubbles: true,
+
+				detail: {
+					maxResults: this.maxResults,
+					auto_submit: this.auto_submit,
+				}
+			});
+
+
+			// dispatch event
+			cart.dispatchEvent(customEvent);
+		}
+
 		return selectedItems;
 
+
+		/**
+		 * Adds an item to the cart table.
+		 * 
+		 * @param {HTMLElement} table - The table element where the item will be added.
+		 * @param {object} itemJson - The JSON object representing the item.
+		 * @param {Array} columns - An array of column objects defining the structure of the table.
+		 * @param {object} id - The ID object containing the key name for the item ID.
+		 * @returns {string} - The ID value of the added item.
+		 */
 		function addItemToCart(table, itemJson, columns, id) {
+
+			// get table body
+			const tbody = table;
 
 			// create row element,
 			// includes vars object to store values for variables
 			// and event listener to update vars object when variableChanged event is emitted
 			const tr = this.#createTr();
+
+			// define array of callbacks to fire sumColumn function
+			const callbacks = [];
 
 			// get id value from itemJson data
 			const id_key = id.key_name;
@@ -177,9 +237,10 @@ class FmCart {
 				// create td element
 				// includes event listener to emit variableChanged event when value is changed
 				const td = this.#createTd(column);
+				const element = td.querySelector('input') || td;
 
 				// get data about this column
-				const { item_field_name, type, default_value, var_name } = column;
+				const { item_field_name, type, default_value, var_name, add_sum } = column;
 
 				// find the value for this column in the itemJson object
 				const value = itemJson[item_field_name] || default_value || '';
@@ -195,11 +256,29 @@ class FmCart {
 				}
 
 				// set value
-				td.textContent = typedValue;
+				if (element.tagName === 'INPUT') {
+					element.value = typedValue;
+				} else {
+					element.textContent = typedValue;
+				}
 
 				// update vars object
 				if (var_name) {
 					tr.vars[var_name] = typedValue;
+				}
+
+				if (add_sum) {
+
+					// adding a callback so that the sumColumn function is fired after all the cells are created
+
+					//sum the column
+					const callback = () => {
+
+						this.#sumColumn(column.name, column.max_sum);
+					}
+
+					// add callback to array
+					callbacks.push(callback);
 				}
 
 				// append to tr
@@ -208,6 +287,7 @@ class FmCart {
 
 			// evaluate expressions
 			this.#updateExpressions(tr);
+
 
 			// create delete button
 			const deleteButton = document.createElement('button');
@@ -224,7 +304,12 @@ class FmCart {
 			tr.appendChild(td);
 
 			// append tr to table
-			table.appendChild(tr);
+			tbody.appendChild(tr);
+
+			// fire sumColumn function
+			callbacks.forEach(callback => {
+				callback();
+			});
 
 
 			return id_value;
@@ -235,12 +320,15 @@ class FmCart {
 	#returnSelectedItems(selectedItems, template = this.template, id, columns, cart) {
 		// loop through selectedItems Map
 		const results = [];
+		const errors = [];
+		const columnsToValidate = columns.filter(column => column.max_sum);
+
 		for (const [key, value] of selectedItems) {
 
-			// start with the value
-			const result = value;
+			// start with a clone of the itemJson
+			const result = { ...value };
 
-			// add the id to data
+			// add id and name it after the key_name
 			result[id.key_name] = key;
 
 			// transform the item
@@ -249,6 +337,40 @@ class FmCart {
 			// add to results
 			results.push(transformed);
 		}
+
+		// validate the sums
+		columnsToValidate.forEach(column => {
+			const { name, max_sum, var_name, item_field_name } = column;
+			const sum = this.sums[var_name || item_field_name || name];
+
+			if (max_sum > 0 && sum > max_sum) {
+				errors.push(`The sum of ${name} is greater than ${max_sum}`);
+			}
+		});
+
+		// alert if there are errors
+		if (errors.length > 0) {
+			// alert(errors.join('\n'));
+
+			// add to result
+			results.validation_errors = errors;
+
+			// emit event
+			const customEvent = new CustomEvent('validationErrors', {
+
+				// allow event to bubble up
+				bubbles: true,
+
+				detail: {
+					errors
+				}
+			});
+
+			// dispatch event
+			cart.dispatchEvent(customEvent);
+		}
+
+		console.log('results', results);
 
 		// return results
 		return results;
@@ -309,7 +431,10 @@ class FmCart {
 			const { var_name } = column;
 
 			// get the value from the row
-			const value = row.querySelector(`td[data-var_name="${var_name}"]`).textContent;
+			const td = row.querySelector(`td[data-var_name="${var_name}"]`)
+
+			// get the value
+			const value = td.querySelector('input')?.value || td.textContent;
 
 			// set the value on the item
 			vars[var_name] = value;
@@ -333,7 +458,9 @@ class FmCart {
 		// and stop the event from bubbling up
 		// and update expressions
 		//	- get all expression cells
-		tr.addEventListener('variableChanged', event => {
+		tr.addEventListener('variableChanged', handleVariableChanged.bind(this));
+
+		function handleVariableChanged(event) {
 
 			event.stopPropagation();
 
@@ -347,20 +474,43 @@ class FmCart {
 			// update expressions
 			this.#updateExpressions(tr);
 
-		});
+			// fire sumColumn function for any colums that have add_sum
+			this.columns.forEach(column => {
+				if (column.add_sum) {
+					this.#sumColumn(column.name, column.max_sum);
+				}
+			});
+
+
+		}
 
 		return tr;
 	}
 
-	#createTd(column) {
+	#createTd(column, tablePart = 'body') {
 		// create td
 		const td = document.createElement('td');
 
 		// get data about this column
-		const { item_field_name, type, editable, default_value, var_name, format } = column;
+		const { name,
+			item_field_name,
+			type, editable,
+			var_name,
+			format,
+			add_sum,
+			max_sum } = column;
 
 		// set editable
-		td.contentEditable = editable;
+		if (editable && type !== 'expression') {
+			// create input
+			const input = document.createElement('input');
+			input.type = type;
+			// append input to td
+			td.appendChild(input);
+
+			// add event listeners
+			input.addEventListener('change', handleChange.bind(this));
+		}
 
 		// set var_name so we can get the value later
 		if (var_name) {
@@ -372,6 +522,7 @@ class FmCart {
 		td.dataset.item_field_name = item_field_name;
 		td.dataset.editable = editable;
 		td.dataset.format = format;
+		td.headers = `col-${name}`;
 
 		if (item_field_name) {
 			td.dataset.item_field_name = item_field_name;
@@ -381,23 +532,24 @@ class FmCart {
 			td.dataset.expression = column.expression;
 		}
 
-		// if this is editable and has a var_name, add an event listener 
-		// to emit an event when the value is changed
-		if (editable && var_name) {
-			td.addEventListener('input', handleInput);
-		}
 
-		function handleInput(event) {
+
+		function handleChange(event) {
+
+			// get the column name
+			const columnName = event.target.parentElement.headers.split('-')[1];
+
+			// get column object 
+			const columnObject = this.columns.find(column => column.name === columnName);
+
 			// get the var_name
-			const var_name = event.target.dataset.var_name;
+			const { var_name } = columnObject;
 
-			// get the value
-			const value = event.target.textContent;
+			const value = event.target.value;
 
-			console.log(`variableChanged: ${var_name} = ${value}`)
 
 			// create event
-			const customEvent = new CustomEvent('variableChanged', {
+			const variableChangedEvent = new CustomEvent('variableChanged', {
 
 				// allow event to bubble up
 				bubbles: true,
@@ -409,10 +561,44 @@ class FmCart {
 			});
 
 			// dispatch event
-			td.dispatchEvent(customEvent);
+			td.dispatchEvent(variableChangedEvent);
 		}
 
 		return td;
+	}
+
+	/**
+	 * Creates a footer element with a row containing table cells based on the given columns.
+	 * includes sum cells for columns with add_sum set to true.
+	 * @param {Array} columns - An array of column objects.
+	 * @returns {HTMLElement} - The created tfoot element.
+	 */
+	#createFooter(columns) {
+		// create footer, row
+		const tfoot = document.createElement('tfoot');
+		const tr = document.createElement('tr');
+
+		// append tr to tfoot
+		tfoot.appendChild(tr);
+
+		// loop through columns
+		columns.forEach((column) => {
+			// create td
+			const td = this.#createTd(column);
+
+			// delete the editable attribute
+			td.removeAttribute('contenteditable');
+
+			if (column['add_sum']) {
+				// add a class to the td
+				td.classList.add('sum');
+			}
+
+			// append td to tfoot
+			tr.appendChild(td);
+		});
+
+		return tfoot;
 	}
 
 	#updateExpressions(tr) {
@@ -432,7 +618,8 @@ class FmCart {
 			// evaluate the expression
 			const evaluated = eval(expression);
 
-			// set the value
+			// set the value on the element
+			// may be an input or a td
 			cell.textContent = evaluated;
 
 			// update vars
@@ -456,6 +643,79 @@ class FmCart {
 
 		this.selectedItems = selectedItems;
 
+		// fire sumColumn function
+		this.columns.forEach(column => {
+			if (column.add_sum) {
+				this.#sumColumn(column.name, column.max_sum);
+			}
+		});
+
 		return selectedItems;
 	}
+
+	#sumColumn(columnName, maxSum = Infinity) {
+
+		// if maxSum is not a number, set to infinity
+		if (typeof maxSum !== 'number' || maxSum <= 0) {
+			maxSum = Infinity;
+		}
+
+		// get the column
+		const column = this.cart.querySelectorAll(`tbody td[headers="col-${columnName}"]`);
+
+		// get the column config
+		const columnConfig = this.columns.find(column => column.name === columnName);
+		const { var_name, item_field_name, summary_format_locale: locale, summary_format_options: format_options } = columnConfig;
+
+		// get the values
+		const values = Array.from(column).map(td => {
+
+			let element = td.querySelector('input') || td;
+			let content = element.value || element.textContent;
+
+			// remove all non-numeric characters
+			content = content.replace(/[^0-9.]/g, '');
+
+			const value = parseFloat(content) || 0;
+			return value;
+		});
+
+		// sum the values
+		const sum = values.reduce((a, b) => a + b, 0);
+
+		// select the footer cell
+		const footerCell = this.cart.querySelector(`tfoot td[headers="col-${columnName}"]`);
+
+
+		// set the value
+		if (locale && format_options) {
+			const formatter = new Intl.NumberFormat(locale, format_options);
+			footerCell.textContent = formatter.format(sum);
+		} else {
+			footerCell.textContent = sum
+		}
+
+		// set value on this
+		this.sums[var_name || item_field_name || columnName] = sum.toFixed(2);
+
+		// create sumUpdated event
+		const event = new CustomEvent('sumUpdated', {
+			bubbles: true,
+			detail: {
+				columnName,
+				sum
+			}
+		});
+
+		// dispatch event
+		footerCell.dispatchEvent(event);
+
+		// alert if sum is greater than maxSum
+		if (sum > maxSum) {
+			console.error(`The sum of ${columnName} is greater than ${maxSum}`);
+		}
+
+		return footerCell;
+	}
+
 }

@@ -10,10 +10,11 @@ const columns = [
   {
     name: 'Price',
     type: 'number',
-    item_field_name: 'Price::amount',
+    item_field_name: 'price',
     editable: true,
     format: 'currency',
     var_name: 'price',
+    add_sum: true
   },
   {
     name: 'Quantity',
@@ -23,6 +24,8 @@ const columns = [
     format: 'number',
     var_name: 'quantity',
     default_value: 1,
+    add_sum: true,
+    max_sum: 10
 	}, {
 		name: 'Subtotal',
 		type: 'expression',
@@ -31,6 +34,7 @@ const columns = [
 		format: 'currency',
 		var_name: 'subtotal',
     expression: '`$ ${(vars.quantity * vars.price).toFixed(2)}`',
+    add_sum: true
   }, {
     name: 'string test',
     type: 'expression',
@@ -74,11 +78,11 @@ let cart;
 
 try {
 
-  window.cart = new FmCart([], columns, id_key_name, template);
-	document.body.appendChild(window.cart.cart);
+  window.cart0 = new FmCart([], columns, id_key_name, template);
+	document.body.appendChild(window.cart0.cart);
 
 	// add the item to the cart
-	window.cart.addItem(itemJson);
+	window.cart0.addItem(itemJson);
 
 } catch (error) {
 	console.error(error);

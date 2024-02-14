@@ -1,11 +1,11 @@
 
 let fmResultsList;
 let cartsArray = [];
+let button;
 
 // initialize picker
-function initializePicker(config) {
+function initializePicker(config, requestData = true) {
 
-	console.log("initializePicker")
 
 	// parse config if needed
 	if (typeof config === 'string') {
@@ -27,11 +27,10 @@ function initializePicker(config) {
 
 	// build picker
 
-	let { items, carts, template } = config;
+	let { items, carts, template, options } = config;
 	const { request, columns, idKeyName } = items;
 
 	// create parent element
-	console.log("create parent element")
 	const parentElement = document.createElement('div');
 	document.body.appendChild(parentElement);
 
@@ -39,7 +38,9 @@ function initializePicker(config) {
 	fmResultsList = new FmResultsList(parentElement, columns, request);
 
 	// tell table perform request to get data from FileMaker
-	fmResultsList.requestData();
+	if (requestData) {
+		fmResultsList.requestData();
+	}
 
 	// guard against no carts
 	if (!carts) {
@@ -52,13 +53,47 @@ function initializePicker(config) {
 		try {
 
 			// declare to window variable, will change this later 
-			const cart = new FmCart(cartJson.rows || [], cartJson.columns, cartJson.idKeyName, template);
+			const cart = new FmCart(cartJson.rows, cartJson.columns, cartJson.idKeyName, template, options);
 			window[`cart${index}`] = cart;
-			console.log(`cart${index}`, window[`cart${index}`]);
+
+			// add cart to DOM
 			document.body.appendChild(cart.cart);
 
 			// add cart to carts array
 			cartsArray.push(cart);
+
+			// add button to get picker results
+			button = document.createElement('button');
+			button.innerHTML = 'Done';
+			button.onclick = () => {
+				const results = getPickerResults(cartsArray);
+
+				if (!results.cart0.validation_errors) {
+					reset(cartsArray);
+				}
+			}
+
+
+			// add button to cancel
+			cancelButton = document.createElement('button');
+			cancelButton.innerHTML = 'Cancel';
+			cancelButton.onclick = () => {
+				// send result to filemaker
+				sendResultToFileMaker({ user_canceled: true });
+				// reset
+				reset(cartsArray);
+			}
+
+			// add buttons to a tfooter and insert into the cart
+			const tfoot = cart.cart.querySelector('tfoot') || document.createElement('tfoot');
+			const tr = document.createElement('tr');
+			const td = document.createElement('td');
+			td.colSpan = cartJson.columns.length + 1; // +1 for the delete column
+			td.appendChild(cancelButton);
+			td.appendChild(button);
+			tr.appendChild(td);
+			tfoot.appendChild(tr);
+			cart.cart.appendChild(tfoot);
 
 		} catch (error) {
 			console.error(error);
@@ -67,37 +102,94 @@ function initializePicker(config) {
 
 	});
 
-	// add button to get picker results
-	const button = document.createElement('button');
-	button.innerHTML = 'Get Picker Results';
-	button.onclick = () => getPickerResults();
-	document.body.appendChild(button);
 
+
+
+	// add listener for maxResults event 
+	document.addEventListener('maxResults', handleMaxResults);
+
+	// add listener for validationErrors event
+	document.addEventListener('validationErrors', handleValidationErrors);
+
+	return {
+		fmResultsList,
+		cartsArray,
+		button
+	};
 
 }
 
-// return picker results
-function getPickerResults(carts = cartsArray) {
-	console.log("getPickerResults", carts)
-	let blankScriptName = 'blank script';
-	let callbackScriptName = 'return parameter as result';
+function handleMaxResults(event) {
+	console.log("maxResults event", event.detail);
+	if (event.detail.auto_submit) {
+		getPickerResults(cartsArray);
+	}
+}
+
+function handleValidationErrors(event) {
+	console.log("validationErrors event", event.detail);
+	alert(event.detail.errors.join("\n"))
+}
+
+// generate object of results for FileMaker
+function getPickerResults(carts = cartsArray, reset = true) {
 
 	let results = {}
 	carts.forEach((cart, index) => {
 		results[`cart${index}`] = cart.results;
 	});
 
-	// perform callback script in FileMaker
+	// send results to FileMaker
+	sendResultToFileMaker(results);
 
-	// return results w/ option 5
-	FileMaker.PerformScriptWithOption(callbackScriptName, JSON.stringify(results), "5");
-
-	// resume the paused script by calling the blank script w/ option 3
-	FileMaker.PerformScriptWithOption(blankScriptName, "", "3");
+	return results;
 
 }
 
-// set data from FileMaker
+// send results to paused FileMaker script
+function sendResultToFileMaker(result) {
+
+	const blankScriptName = 'blank script';
+	const callbackScriptName = 'return parameter as result';
+
+	if (!window.FileMaker) {
+		return;
+	}
+
+	try {
+		// return results w/ option 5
+		FileMaker.PerformScriptWithOption(callbackScriptName, JSON.stringify(result), "5");
+
+		// resume the paused script by calling the blank script w/ option 3
+		FileMaker.PerformScriptWithOption(blankScriptName, "", "3");
+
+	} catch (error) {
+		throw error;
+	}
+}
+
+// reset function
+function reset(carts) {
+	// remove carts from DOM and window variables
+	carts.forEach((cart, index) => {
+		cart.cart.remove();
+		window[`cart${index}`] = null;
+	});
+
+	// delete the document body and recreate it
+	document.body.remove();
+	document.body = document.createElement('body');
+
+	// reset and prepare for another configuration
+	cartsArray = [];
+	fmResultsList = null;
+	button = null;
+
+	// remove event listener for maxResults
+	document.removeEventListener('maxResults', handleMaxResults);
+}
+
+// set data from FileMaker to the results list
 function fmSetData(data, list = fmResultsList) {
 	try {
 		data = JSON.parse(data);
@@ -107,10 +199,9 @@ function fmSetData(data, list = fmResultsList) {
 	}
 }
 
-// helper functions
+// helper function to validate config
 function validateConfig(config) {
 	const { items, carts, template, options } = config;
-	console.log("validateConfig")
 
 
 	// build one error message for all errors
@@ -121,9 +212,9 @@ function validateConfig(config) {
 		errorMesageArray.push("No items object was provided");
 	}
 
-	if (!items.request) {
-		errorMesageArray.push("No items.request object was provided");
-	}
+	// if (!items.request) {
+	// 	errorMesageArray.push("No items.request object was provided");
+	// }
 
 	if (!items.columns) {
 		errorMesageArray.push("No items.columns array was provided");
@@ -133,11 +224,10 @@ function validateConfig(config) {
 
 	if (!items.idKeyName) {
 		errorMesageArray.push("No items.idKeyName string was provided");
-	} 
+	}
 
 	if (carts) {
 
-		console.log(carts)
 
 		carts.forEach((cart, index) => {
 
@@ -170,11 +260,18 @@ function validateConfig(config) {
 		errorMesageArray.push("No template was provided");
 	}
 
+	if (options) {
+		if (options.max_results) {
+			if (typeof options.max_results !== 'number') {
+				errorMesageArray.push("options.max_results must be a number");
+			}
+		}
+	}
+
 	if (errorMesageArray.length > 0) {
 		console.error(errorMesageArray.join("\n"));
 		throw new Error(errorMesageArray.join("\n"));
 	} else {
-		console.log("config is valid")
 		return true;
 	}
 
