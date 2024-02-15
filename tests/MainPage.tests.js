@@ -11,6 +11,12 @@ const cartColumns = [
 		type: 'number',
 		item_field_name: 'price',
 		editable: true,
+		input_attributes: {
+			min: 0,
+			size: 10,
+			step: 1,
+			maxLength: 10
+		},
 		format: 'currency',
 		var_name: 'price',
 		add_sum: true,
@@ -27,7 +33,9 @@ const cartColumns = [
 		editable: true,
 		input_attributes: {
 			min: 1,
-			max: 10
+			max: 10,
+			maxLength: 3,
+			size: 3
 		},
 		var_name: 'quantity',
 		default_value: 1,
@@ -49,17 +57,9 @@ const cartColumns = [
 			currency: 'USD'
 		},
 		var_name: 'subtotal',
-		expression: '`$ ${(vars.quantity * vars.price).toFixed(2)}`',
+		expression: '`$${(vars.quantity * vars.price).toFixed(2)}`',
 		add_sum: true,
 		max_sum: 1000
-	}, {
-		name: 'string test',
-		type: 'expression',
-		var_name: 'string test',
-		editable: false,
-		format: 'string',
-		item_field_name: 'string test',
-		expression: '`${vars.price} x ${vars.quantity} = ${vars.subtotal}`',
 	}
 ];
 
@@ -88,7 +88,8 @@ const template = {
 	'order item::_order id': 'my order id',
 	'order item::quantity': '`${vars.quantity}`',
 	'order item::subtotal': '`${vars.quantity * vars.price}`',
-	'order item::__id': '`${vars.id}`',
+	'order item::__id': '`${vars.id}`', 
+	'order item::week': '`${vars.week}`'
 };
 
 const id_key_name = 'order item::__id';

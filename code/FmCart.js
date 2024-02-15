@@ -497,14 +497,36 @@ class FmCart {
 			type, editable,
 			var_name,
 			format,
-			add_sum,
-			max_sum } = column;
+			input_attributes
+		} = column;
 
 		// set editable
 		if (editable && type !== 'expression') {
 			// create input
 			const input = document.createElement('input');
 			input.type = type;
+
+			// extract the attributes we'll allow
+			const attributes = ['pattern', 'placeholder'];
+
+			if (type === 'text') {
+				attributes.push('maxLength', 'size');
+			}else if (type === 'number') {
+				attributes.push('min', 'max', 'step');
+			}
+
+			// loop through attributes
+			if (input_attributes) {
+				attributes.forEach(attr => {
+					if (input_attributes[attr]) {
+						input[attr] = input_attributes[attr];
+					}
+				});
+			}
+
+			// set the attributes
+
+
 			// append input to td
 			td.appendChild(input);
 
