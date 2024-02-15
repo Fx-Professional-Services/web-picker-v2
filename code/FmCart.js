@@ -126,6 +126,10 @@ class FmCart {
 				this.#selectItem(row, id, selectedItems, columns, table);
 
 			});
+			
+			// append table to cart container
+			let fmCartContainer = document.querySelector('.fm-cart-container');
+			fmCartContainer.appendChild(table);
 
 
 
