@@ -23,7 +23,7 @@ const resultColumns = [
 		}
 	},
 	{
-		cart_ids: ["cart0"],
+		cart_ids: ["cart-1"],
 		name: "select",
 		type: "cart-button"
 	}
@@ -100,6 +100,9 @@ class FmResultsList2 extends FmComponent {
 
 			// private properties
 			this.columns = resultColumns; // the columns to display in the table
+			this.idKeyName = ''; // the name of the key field in the data
+			this.allowDuplicates = false; // whether to allow duplicate items in the cart
+			this.selectedRows = new Set(); // the records selected in the table
 
 			// render the component
 			this.render();
@@ -408,7 +411,6 @@ class FmResultsList2 extends FmComponent {
 
 		data.forEach((record, index) => {
 			const tr = this.#addRow(record);
-			tr.id = `row-${index}`
 		})
 	}
 
@@ -427,6 +429,21 @@ class FmResultsList2 extends FmComponent {
 
 		// add data to the row
 		tr.record = record;
+
+		// get the record id
+		const recordId = record[this.idKeyName];
+
+		// add a uuid for the row
+		tr.id = crypto.randomUUID();
+
+		// add the record id, fallback to the row id
+		tr.recordId = recordId || tr.id;
+
+		// add a vars object
+		tr.vars = {};
+
+		// add the record id to the vars object
+		tr.vars.id = tr.recordId;
 
 		// add the cells to the row
 		this.columns.forEach(column => {
@@ -464,7 +481,7 @@ class FmResultsList2 extends FmComponent {
 			td.append(button);
 
 			// add event listener
-			button.addEventListener('click', this.#clickAddToCart.bind(this));
+			button.addEventListener('click', this.#handleClickAddToCart.bind(this));
 
 		} else {
 			// get the field data from the record
@@ -487,7 +504,6 @@ class FmResultsList2 extends FmComponent {
 
 		// update the summaries
 		formattedColumns.forEach(column => {
-			console.log('column', column)
 			const { id, format } = column;
 			const { locale, options } = format;
 			const th = this.shadowRoot.querySelector(`#summary-${id}`);
@@ -516,7 +532,6 @@ class FmResultsList2 extends FmComponent {
 			value = value.replace(/[^0-9.-]+/g, '');
 			return acc + parseFloat(value);
 		}, 0);
-		console.log('sum', sum)
 		return sum;
 	}
 
@@ -546,12 +561,11 @@ class FmResultsList2 extends FmComponent {
 	 * 
 	 * @param {Event} event - The click event object.
 	 */
-	#clickAddToCart(event) {
+	#handleClickAddToCart(event) {
 		// get the data from the row
 		const row = event.target.closest('tr'); // the row
 		const td = event.target.closest('td'); // the cell
-		const column = this.columns[td.cellIndex];
-		const record = this.response.data[row.rowIndex];
+		const column = this.columns[td.cellIndex]; // the column
 
 		const { cart_ids: cartIds } = column;
 
@@ -560,13 +574,15 @@ class FmResultsList2 extends FmComponent {
 			bubbles: true,
 			composed: true,
 			detail: {
-				row,
-				column,
+				row: row,
+				cartIds,
 			}
 		});
 
-		this.dispatchEvent(e);
-
+		// dispatch the event
+		if (!this.selectedRows.has(row) || this.allowDuplicates) {
+			this.dispatchEvent(e);
+		}
 	}
 }
 

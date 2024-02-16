@@ -32,7 +32,14 @@ class FmPicker extends FmComponent {
 	}
 
 	#addToCart(event) {
-		console.log('add-to-cart event', event);
+		const { detail } = event;
+		const { cartIds, row: resultRow } = detail; 
+
+
+		cartIds.forEach((cartId) => {
+			const cart = this.querySelector(`#${cartId}`);
+			cart.addItem(resultRow);
+		})
 	}
 }
 
