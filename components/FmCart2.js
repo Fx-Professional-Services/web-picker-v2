@@ -56,7 +56,7 @@ const cartColumns = [
 		editable: true,
 		summary_format: {
 			locale: 'en-US',
-			options: { style: 'decimal', currency: 'USD' },
+			options: { style: 'currency', currency: 'USD' },
 		},
 		var_name: 'subtotal',
 		expression: '`$${(vars.quantity * vars.price).toFixed(2)}`',
@@ -134,6 +134,7 @@ class FmCart2 extends FmComponent {
 			// set the columns
 			if (this.columns) {
 				this.#addColumns();
+				this.#addSummaryRow();
 			}
 		} catch (error) {
 			throw error;
@@ -244,6 +245,7 @@ class FmCart2 extends FmComponent {
 		}
 
 		this.#addColumns();
+		this.#addSummaryRow();
 	}
 
 	/* private methods */
@@ -252,7 +254,7 @@ class FmCart2 extends FmComponent {
 			// get header row
 			const headerRow = this.shadowRoot.getElementById('header-row');
 
-			this.#columns.forEach((column) => {
+			this.#columns.forEach((column, index) => {
 				// create th element
 				const th = document.createElement('th');
 
@@ -262,8 +264,22 @@ class FmCart2 extends FmComponent {
 				// set text content
 				th.textContent = name;
 
+				// set the id
+				th.id = `col-${index}`;
+
+				// add id to this.columns
+				column.id = index;
+
 				headerRow.append(th);
 			});
+
+			// add delete column
+			const th = document.createElement('th');
+			th.innerHTML = 'Delete';
+			th.id = `label-delete`;
+			headerRow.appendChild(th);
+
+
 		} catch (error) {
 			throw error;
 		}
@@ -285,6 +301,12 @@ class FmCart2 extends FmComponent {
 			row.vars = resultRow.vars || {};
 			row.recordId = resultRow.recordId;
 			row.record = resultRow.record;
+			row.expressionCells = [];
+			row.columns = this.columns;
+
+			// add id to row (offers a unique identifier for the row)
+			row.vars.rowId = row.id;
+
 
 			this.columns.forEach((column) => {
 				// add cell
@@ -293,9 +315,33 @@ class FmCart2 extends FmComponent {
 				row.append(td);
 			});
 
+			// add event listener
+			row.addEventListener('variable-changed', this.#handleVariableChanged.bind(this));
+
+			// update expressions
+			this.#updateExpressionCells(row);
+
+			// add delete button
+			const deleteButton = document.createElement('button');
+			deleteButton.textContent = 'Delete';
+			deleteButton.addEventListener('click', () => {
+				// remove the row
+				row.remove();
+				// remove from rows map
+				this.#rows.delete(row.id);
+				// update the summaries
+				this.#updateAllSummaries();
+			});
+
+			// create td element
+			const td = document.createElement('td');
+			td.appendChild(deleteButton);
+			row.appendChild(td);
+
 			// append to tbody
 			tbody.append(row)
-			console.log('row', row);
+
+
 			return row;
 		} catch (error) {
 			throw error;
@@ -306,10 +352,14 @@ class FmCart2 extends FmComponent {
 		try {
 
 			// deconstruct column
-			const { name, type, input_attributes, editable, var_name: varName, expression } = column;
+			const { name, type, input_attributes, editable, var_name: varName, expression, id: columnId } = column;
 
 			// create td element
 			const td = document.createElement('td');
+
+			// associate the column
+			td.column = column;
+			td.headers = `col-${columnId}`;
 
 			// get the value
 			const value = this.#getValue(row.vars, column, row.record);
@@ -322,6 +372,9 @@ class FmCart2 extends FmComponent {
 			if (expression) {
 				// add a class to the td so we can evaluate it later
 				td.classList.add('expression');
+				td.expression = expression;
+				// add to array of expressions on the tr
+				row.expressionCells.push(td);
 			}
 
 			// create input
@@ -334,6 +387,11 @@ class FmCart2 extends FmComponent {
 					Object.entries(input_attributes).forEach(([key, value]) => {
 						input.setAttribute(key, value);
 					});
+				}
+
+				if (varName) {
+					// add event listener
+					input.addEventListener('input', this.#emitVariableChanged.bind(this));
 				}
 
 
@@ -352,6 +410,29 @@ class FmCart2 extends FmComponent {
 
 
 			return td;
+		} catch (error) {
+			throw error;
+		}
+	}
+
+	#addSummaryRow() {
+		try {
+
+			const summaryRow = this.shadowRoot.getElementById('summary-row');
+			this.columns.forEach((column, index) => {
+				const td = document.createElement('td');
+				const { summary_format: format, id } = column;
+				td.id = `summary-col-${id}`;
+				td.headers = `col-${id}`;
+				if (column.add_sum) {
+					td.classList.add('sum');
+					td.textContent = new Intl.NumberFormat(format.locale || null, format.options).format(0);
+				}
+
+				summaryRow.append(td);
+			});
+
+
 		} catch (error) {
 			throw error;
 		}
@@ -380,27 +461,149 @@ class FmCart2 extends FmComponent {
 
 	}
 
-	#handleClickCancel(event) {
-		console.log('cancel button clicked');
+	#updateExpressionCells(row) {
+		const columns = this.columns;
+		row.expressionCells.forEach((td) => {
+			const vars = row.vars;
+			const expression = td.expression;
+			const value = eval(expression)
+
+			// if the td has an input, update the input
+			// if the td has text, update the text
+
+			const element = td.querySelector('input') || td;
+			if (element instanceof HTMLInputElement) {
+				element.value = value;
+			} else {
+				element.textContent = value;
+			}
+
+			// update vars
+			const varName = td.column.var_name;
+			if (varName) {
+				row.vars[varName] = value;
+			}
+
+			// update summaries
+			if (td.column.add_sum) {5-1234
+				this.#updateSummary(td.column);
+			}
+		});
+
+
+
 	}
 
-	#handleClickDone(event) { }
+	#updateSummary(column) {
+		try {
+			// destructure column
+			const { var_name: varName, summary_format: summaryFormat, id } = column;
+
+			// get all body cells for this column
+			const cells = this.shadowRoot.querySelectorAll(`tbody td[headers='col-${id}']`);
+
+			// get the sum
+			const sum = Array.from(cells).reduce((acc, cell) => {
+				let value = cell.querySelector('input')?.value || cell.textContent || 0;
+				// remove currency symbols
+				value = value.replace(/[$,]/g, '');
+				// remove non-numeric characters
+				value = value.replace(/[^\d.-]/g, '') || 0;
+				return acc + parseFloat(value);
+			}, 0);
+
+			// format the sum
+			const formattedSum = sum.toLocaleString(summaryFormat.locale, summaryFormat.options);
+
+			// update the summary cell
+			const summaryCell = this.shadowRoot.getElementById(`summary-col-${id}`);
+			summaryCell.textContent = formattedSum;
+
+		} catch (error) {
+
+		}
+	}
+
+	#updateAllSummaries() {
+		this.columns.forEach((column) => {
+			if (column.add_sum) {
+				this.#updateSummary(column);
+			}
+		});
+	
+	}
+
 
 	/* public methods */
-	addItem(resultRow) {
+	addItems(resultRows) {
 		try {
 
-			// add the row
-			const row = this.#addRow(resultRow);
+			resultRows.forEach((resultRow) => { 
+				// add the row
+				const row = this.#addRow(resultRow);
+				
+				// add the row to the rows map
+				this.#rows.set(row.id, row);
 
-			// add the row to the rows map
-			this.#rows.set(row.id, row);
+			});
+
+			// update the summaries
+			this.#updateAllSummaries();
 
 		} catch (error) {
 			throw error;
 		}
 
 	}
+
+	/* handlers */
+
+	#handleClickCancel(event) {
+		console.log('cancel button clicked');
+	}
+
+	#handleClickDone(event) { }
+
+	#emitVariableChanged(event) {
+
+		// get the tr (target closest tr if the event target is an input element)
+		const tr = event.target.closest('tr') || event.target.parentElement;
+		const td = event.target.closest('td') || event.target;
+		const column = this.columns[td.cellIndex];
+
+		const VariableChangedEvent = new CustomEvent('variable-changed', {
+			bubbles: true,
+
+			detail: {
+				row: tr,
+				column: column,
+				value: event.target.value,
+			},
+		});
+
+		event.target.dispatchEvent(VariableChangedEvent);
+	}
+
+	#handleVariableChanged(event) {
+
+		// deconstruct event
+		const { row, column, value } = event.detail;
+
+		// update the vars object
+		row.vars[column.var_name] = value;
+
+		// update the expression cells
+		if (row.expressionCells.length > 0) {
+			this.#updateExpressionCells(row);
+		}
+
+		// update the summary
+		if(column.add_sum){
+			this.#updateSummary(column);
+		}
+
+	}
+
 }
 
 customElements.define('fm-cart', FmCart2);

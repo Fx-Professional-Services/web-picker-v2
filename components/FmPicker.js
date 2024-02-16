@@ -38,7 +38,7 @@ class FmPicker extends FmComponent {
 
 		cartIds.forEach((cartId) => {
 			const cart = this.querySelector(`#${cartId}`);
-			cart.addItem(resultRow);
+			cart.addItems([resultRow]);
 		})
 	}
 }

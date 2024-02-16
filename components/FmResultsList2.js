@@ -252,13 +252,13 @@ class FmResultsList2 extends FmComponent {
 		th {
 			border: 1px solid #dddddd;
 			text-align: left;
-			padding: .5em;
+			padding: 5px;
 		}
 
 		td {
 			border: 1px solid #dddddd;
 			text-align: left;
-			padding: .5em;
+			padding: 5px;
 		}
 
 		tr:nth-child(even) {
@@ -447,7 +447,7 @@ class FmResultsList2 extends FmComponent {
 
 		// add the cells to the row
 		this.columns.forEach(column => {
-			const td = this.#addCell(column, record);
+			const td = this.#addCell(column, record, tr);
 			tr.appendChild(td);
 		});
 
@@ -464,7 +464,7 @@ class FmResultsList2 extends FmComponent {
 	 * @param {Object} record - The record object containing data for the row.
 	 * @returns {HTMLTableCellElement} - The created table cell element.
 	 */
-	#addCell(column, record) {
+	#addCell(column, record, row) {
 		// create a td element
 		const td = document.createElement('td');
 
