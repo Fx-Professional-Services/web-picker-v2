@@ -18,6 +18,15 @@ class FmPicker extends FmComponent {
 		:host {
 			display: block;
 		}
+
+		#fm-picker {
+			display: flex;
+			flex-direction: column;
+			flex-wrap: nowrap;
+			align-items: stretch;
+			width: 100%;
+			gap: 1em;
+		}
 		`;
 	}
 
@@ -40,6 +49,14 @@ class FmPicker extends FmComponent {
 			const cart = this.querySelector(`#${cartId}`);
 			cart.addItems([resultRow]);
 		})
+	}
+
+	addCart(options) {
+		const cart = document.createElement('fm-cart');
+		cart.columns = options.columns;
+		cart.idKeyName = options.idKeyName;
+		cart.template = options.template;
+		this.appendChild(cart);
 	}
 }
 

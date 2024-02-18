@@ -12,7 +12,6 @@ class FmComponent extends HTMLElement {
 	// private properties
 	#template
 	#styles
-	#isRendered = false
 
 	// constructor
 	constructor() {
@@ -20,6 +19,8 @@ class FmComponent extends HTMLElement {
 		this.attachShadow({ mode: 'open' });
 		this.#template = document.createElement('template');
 		this.#styles = document.createElement('style');
+		this.isRendered = false;
+		this.isRendering = false;
 
 	}
 
@@ -47,8 +48,7 @@ class FmComponent extends HTMLElement {
 	// public methods
 	firstRender() {
 		this.render();
-		this.#isRendered = true;
-	
+		this.isRendered = true;
 	}
 
 

@@ -24,7 +24,11 @@ const resultColumns = [
 	},
 	{
 		cart_ids: ["cart-1"],
-		name: "select",
+		name: "cart 1",
+		type: "cart-button"
+	}, {
+		cart_ids: ["cart-2"],
+		name: "cart 2",
 		type: "cart-button"
 	}
 ]
@@ -114,11 +118,17 @@ class FmResultsList2 extends FmComponent {
 			this.tfoot = this.shadowRoot.querySelector('tfoot');
 			this.titleRow = this.shadowRoot.querySelector('#title-row');
 			this.titleCell = this.shadowRoot.querySelector('#title-row td');
+			this.buttonsCell = this.shadowRoot.querySelector('#buttons-cell');
 			this.labelsRow = this.shadowRoot.querySelector('#label-row');
 			this.summaryRow = this.shadowRoot.querySelector('#summary-row');
 			this.buttonsRow = this.shadowRoot.querySelector('#buttons-row');
 			this.prevButton = this.shadowRoot.querySelector('#prev-button');
 			this.nextButton = this.shadowRoot.querySelector('#next-button');
+
+			// set colspan
+			this.titleCell.colSpan = this.columns.length;
+			this.buttonsCell.colSpan = this.columns.length;
+
 
 		} catch (error) {
 			throw error;
@@ -179,7 +189,7 @@ class FmResultsList2 extends FmComponent {
 		<table>
 				<thead>
 					<tr id='title-row'>
-						<td colspan='100%'>Table Title</td>
+						<td>Table Title</td>
 					</tr>
 					<tr id='search-row'></tr>
 					<tr id='label-row'></tr>
@@ -189,11 +199,9 @@ class FmResultsList2 extends FmComponent {
 				<tfoot>
 					<tr id='summary-row'></tr>
 					<tr id='buttons-row'>
-						<td colspan='50%'>
-							<button id='prev-button'>Previous</button>
-						</td>
-						<td colspan='50%'>
-							<button id='next-button'>Next</button>
+						<td id='buttons-cell'>
+							<picker-button id='prev-button'>Previous</picker-button>
+							<picker-button id='next-button'>Next</picker-button>
 						</td>
 					</tr>
 				</tfoot>
@@ -273,8 +281,8 @@ class FmResultsList2 extends FmComponent {
 			background-color: #f2f2f2;
 		}
 
-		#next-button, #prev-button {
-			width: 100%;
+		#buttons-cell {
+			
 		}
 		`;
 	}
@@ -476,7 +484,7 @@ class FmResultsList2 extends FmComponent {
 
 		if (type === 'cart-button') {
 			// create a button
-			const button = document.createElement('button');
+			const button = document.createElement('picker-button');
 			button.innerHTML = name || 'Select';
 			td.append(button);
 
