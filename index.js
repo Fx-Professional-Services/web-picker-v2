@@ -32,7 +32,13 @@ function initializePicker(config, requestData = true) {
 
 	// create parent element
 	const parentElement = document.createElement('div');
+	parentElement.className = 'fm-results-list';
 	document.body.appendChild(parentElement);
+
+	// create div to hold cart
+	const div = document.createElement('div');
+	div.className = 'fm-cart-container';
+	document.body.appendChild(div);
 
 	// create table
 	fmResultsList = new FmResultsList(parentElement, columns, request);
