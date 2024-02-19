@@ -1,278 +1,131 @@
+// test data
+const testCartColumns = [
+	{
+		name: 'Name',
+		type: 'text',
+		item_field_name: 'name',
+		editable: false,
+		format: 'string',
+	},
+	{
+		name: 'Price',
+		type: 'number',
+		item_field_name: 'price',
+		editable: true,
+		input_attributes: {
+			min: 0,
+			size: 10,
+			step: 0.01,
+			maxLength: 10,
+		},
+		format: 'currency',
+		var_name: 'price',
+		add_sum: true,
+		summary_format: {
+			locale: 'en-US',
+			options: {
+				style: 'currency',
+				currency: 'USD',
+			},
+		},
+	},
+	{
+		name: 'Quantity (max 10)',
+		type: 'number',
+		item_field_name: 'quantity',
+		editable: true,
+		input_attributes: {
+			min: 1,
+			maxLength: 3,
+			size: 3,
+		},
+		var_name: 'quantity',
+		default_value: 1,
+		add_sum: true,
+		max_sum: 10,
+		summary_format: {
+			locale: 'en-US',
+			options: { style: 'decimal', currency: 'USD' },
+		},
+	},
+	{
+		name: 'Subtotal',
+		type: 'expression',
+		item_field_name: 'subtotal',
+		editable: true,
+		summary_format: {
+			locale: 'en-US',
+			options: { style: 'currency', currency: 'USD' },
+		},
+		var_name: 'subtotal',
+		expression: '`$${(vars.quantity * vars.price).toFixed(2)}`',
+		add_sum: true,
+		max_sum: 1000,
+	},
+];
 
-let fmResultsList;
-let cartsArray = [];
-let button;
+const testResultTemplate = {
+	'order item::name': 'name',
+	'order item::price': '`${vars.price}`',
+	'order item::_order id': 'my order id',
+	'order item::quantity': '`${vars.quantity}`',
+	'order item::subtotal': '`${vars.quantity * vars.price}`',
+	'order item::__id': '`${vars.id}`',
+	'order item::week': '`${vars.week}`'
+};
 
-// initialize picker
-function initializePicker(config, requestData = true) {
+const testCartOptions = {
+	columns: testCartColumns,
+	id_key_name: 'id',
+	title: 'test cart',
+	rows: [],
+	template: testResultTemplate,
+	cart_id: 'cart-1'
+};
 
-
-	// parse config if needed
-	if (typeof config === 'string') {
-		try {
-			config = JSON.parse(config);
-		} catch (error) {
-			console.error(error);
-			throw error;
-		}
-	}
-
-	// validate config
-	try {
-		validateConfig(config);
-	} catch (error) {
-		console.error(error);
-		throw error;
-	}
-
-	// build picker
-
-	let { items, carts, template, options } = config;
-	const { request, columns, idKeyName } = items;
-
-	// create parent element
-	const parentElement = document.createElement('div');
-	document.body.appendChild(parentElement);
-
-	// create table
-	fmResultsList = new FmResultsList(parentElement, columns, request);
-
-	// tell table perform request to get data from FileMaker
-	if (requestData) {
-		fmResultsList.requestData();
-	}
-
-	// guard against no carts
-	if (!carts) {
-		return true;
-	}
-
-	// create carts
-	carts.forEach((cartJson, index) => {
-
-		try {
-
-			// declare to window variable, will change this later 
-			const cart = new FmCart(cartJson.rows, cartJson.columns, cartJson.idKeyName, template, options);
-			window[`cart${index}`] = cart;
-
-			// add cart to DOM
-			document.body.appendChild(cart.cart);
-
-			// add cart to carts array
-			cartsArray.push(cart);
-
-			// add button to get picker results
-			button = document.createElement('button');
-			button.innerHTML = 'Done';
-			button.onclick = () => {
-				const results = getPickerResults(cartsArray);
-
-				if (!results.cart0.validation_errors) {
-					reset(cartsArray);
-				}
+const testResultsListOptions = {
+	columns: resultColumns,
+	id_key_name: 'id',
+	id: 'results-list-1',
+	request: {
+		layouts: "query: item v1",
+		data_source_name: "order",
+		limit: 10,
+		query: [
+			{
+				['Item::is product']: "1"
 			}
+		]
+	}
+};
 
-
-			// add button to cancel
-			cancelButton = document.createElement('button');
-			cancelButton.innerHTML = 'Cancel';
-			cancelButton.onclick = () => {
-				// send result to filemaker
-				sendResultToFileMaker({ user_canceled: true });
-				// reset
-				reset(cartsArray);
-			}
-
-			// add buttons to a tfooter and insert into the cart
-			const tfoot = cart.cart.querySelector('tfoot') || document.createElement('tfoot');
-			const tr = document.createElement('tr');
-			const td = document.createElement('td');
-			td.colSpan = cartJson.columns.length + 1; // +1 for the delete column
-			td.appendChild(cancelButton);
-			td.appendChild(button);
-			tr.appendChild(td);
-			tfoot.appendChild(tr);
-			cart.cart.appendChild(tfoot);
-
-		} catch (error) {
-			console.error(error);
-			throw error;
-		};
-
-	});
-
-
-
-
-	// add listener for maxResults event 
-	document.addEventListener('maxResults', handleMaxResults);
-
-	// add listener for validationErrors event
-	document.addEventListener('validationErrors', handleValidationErrors);
-
-	return {
-		fmResultsList,
-		cartsArray,
-		button
-	};
-
+let picker;
+const config = {
+	carts: [testCartOptions],
+	resultsLists: [testResultsListOptions]
 }
 
-function handleMaxResults(event) {
-	console.log("maxResults event", event.detail);
-	if (event.detail.auto_submit) {
-		getPickerResults(cartsArray);
-	}
+console.log(config)
+
+// main function
+function main() {
+	picker = document.querySelector('fm-picker');
+	// addCart()
 }
 
-function handleValidationErrors(event) {
-	console.log("validationErrors event", event.detail);
-	alert(event.detail.errors.join("\n"))
+function addCart(options = testCartOptions) {
+	picker.addCart(options);
 }
 
-// generate object of results for FileMaker
-function getPickerResults(carts = cartsArray, reset = true) {
-
-	let results = {}
-	carts.forEach((cart, index) => {
-		results[`cart${index}`] = cart.results;
-	});
-
-	// send results to FileMaker
-	sendResultToFileMaker(results);
-
-	return results;
-
+function addResultsList(options = testResultsListOptions) {
+	picker.addResultsList(options);
 }
 
-// send results to paused FileMaker script
-function sendResultToFileMaker(result) {
-
-	const blankScriptName = 'blank script';
-	const callbackScriptName = 'return parameter as result';
-
-	if (!window.FileMaker) {
-		return;
-	}
-
-	try {
-		// return results w/ option 5
-		FileMaker.PerformScriptWithOption(callbackScriptName, JSON.stringify(result), "5");
-
-		// resume the paused script by calling the blank script w/ option 3
-		FileMaker.PerformScriptWithOption(blankScriptName, "", "3");
-
-	} catch (error) {
-		throw error;
-	}
+function setResultsListData(data, options) {
+	data = JSON.parse(data);
+	options = JSON.parse(options);
+	picker.setResultsListData(options.id, data);
 }
 
-// reset function
-function reset(carts) {
-	// remove carts from DOM and window variables
-	carts.forEach((cart, index) => {
-		cart.cart.remove();
-		window[`cart${index}`] = null;
-	});
-
-	// delete the document body and recreate it
-	document.body.remove();
-	document.body = document.createElement('body');
-
-	// reset and prepare for another configuration
-	cartsArray = [];
-	fmResultsList = null;
-	button = null;
-
-	// remove event listener for maxResults
-	document.removeEventListener('maxResults', handleMaxResults);
-}
-
-// set data from FileMaker to the results list
-function fmSetData(data, list = fmResultsList) {
-	try {
-		data = JSON.parse(data);
-		list.queryResponse = data;
-	} catch (error) {
-		console.error(error);
-	}
-}
-
-// helper function to validate config
-function validateConfig(config) {
-	const { items, carts, template, options } = config;
-
-
-	// build one error message for all errors
-	let errorMesageArray = [];
-
-	// validate config
-	if (!items) {
-		errorMesageArray.push("No items object was provided");
-	}
-
-	// if (!items.request) {
-	// 	errorMesageArray.push("No items.request object was provided");
-	// }
-
-	if (!items.columns) {
-		errorMesageArray.push("No items.columns array was provided");
-	} else if (items.columns.length === 0) {
-		errorMesageArray.push("No items.columns array was provided");
-	}
-
-	if (!items.idKeyName) {
-		errorMesageArray.push("No items.idKeyName string was provided");
-	}
-
-	if (carts) {
-
-
-		carts.forEach((cart, index) => {
-
-			if (!cart.columns) {
-				errorMesageArray.push(`No cart.columns array was provided for cart ${index}`);
-			} else if (cart.columns.length === 0) {
-				errorMesageArray.push(`No cart.columns array was provided for cart ${index}`);
-			}
-
-			if (!cart.idKeyName) {
-				errorMesageArray.push(`No cart.idKeyName string was provided for cart ${index}`);
-			}
-
-			// validate columns
-
-			let cartIndex = index;
-			cart.columns.forEach((column, index) => {
-				if (!column.name) {
-					errorMesageArray.push(`cart ${cartIndex} column ${index} does not have a name`);
-				}
-
-			});
-
-
-		});
-	}
-
-
-	if (!template) {
-		errorMesageArray.push("No template was provided");
-	}
-
-	if (options) {
-		if (options.max_results) {
-			if (typeof options.max_results !== 'number') {
-				errorMesageArray.push("options.max_results must be a number");
-			}
-		}
-	}
-
-	if (errorMesageArray.length > 0) {
-		console.error(errorMesageArray.join("\n"));
-		throw new Error(errorMesageArray.join("\n"));
-	} else {
-		return true;
-	}
-
-}
+// run main function
+document.addEventListener('DOMContentLoaded', main);

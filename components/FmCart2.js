@@ -10,7 +10,7 @@ const cartColumns = [
 	{
 		name: 'Price',
 		type: 'number',
-		item_field_name: 'price',
+		item_field_name: 'item__PRICE__list::amount',
 		editable: true,
 		input_attributes: {
 			min: 0,
@@ -81,7 +81,7 @@ class FmCart2 extends FmComponent {
 	}
 	// static properties
 	// private properties
-	#columns;
+	#columns =[];
 	#rows = new Map();
 	#title;
 
@@ -89,9 +89,8 @@ class FmCart2 extends FmComponent {
 	constructor() {
 		try {
 			super();
-			this.columns = cartColumns;
-			this.cartTitle = 'Cart';
-			this.resultTemplate = resultTemplate;
+			this.selectedIds = new Set();
+			this.allowDuplicates = true;
 
 			this.render();
 		} catch (error) {
@@ -109,29 +108,20 @@ class FmCart2 extends FmComponent {
 	connectedCallback() {
 		try {
 			// public properties
-			this.headerRow = this.shadowRoot.getElementById('header-row');
-			this.summaryRow = this.shadowRoot.getElementById('summary-row');
-			this.bottomButtonsRow = this.shadowRoot.getElementById(
-				'bottom-buttons-row',
-			);
-			this.cancelButton =
-				this.shadowRoot.getElementById('cancel-button');
-			this.doneButton = this.shadowRoot.getElementById('done-button');
-			this.titleCell = this.shadowRoot.getElementById('title-cell');
-			this.buttonsCell =
-				this.shadowRoot.getElementById('buttons-cell');
-
-			// set colspan of titleCell and buttonsCell
-			this.titleCell.colSpan = this.columns.length + 1;
-			this.buttonsCell.colSpan = this.columns.length + 1;
+			
+				// set colspan of titleCell and buttonsCell
+				this.ids['title-cell'].colSpan = this.columns?.length + 1 || 1;
+				;
+				this.ids['buttons-cell'].colSpan = this.columns?.length + 1 || 1;
+		
 
 			// add event listeners
-			this.cancelButton.addEventListener(
+			this.ids['cancel-button'].addEventListener(
 				'click',
 				this.#handleClickCancel.bind(this),
 			);
 
-			this.doneButton.addEventListener(
+			this.ids['done-button'].addEventListener(
 				'click',
 				this.#handleClickDone.bind(this),
 			);
@@ -154,18 +144,12 @@ class FmCart2 extends FmComponent {
 			super.render();
 
 			console.log('rendering cart');
+			this.isRendered = true;
 
-			// set the columns
-			if (this.columns) {
-				this.#addColumns();
-				this.#addSummaryRow();
-			} 
+			// add columns
+			this.#addColumns();
+			this.#addSummaryRow();
 
-			if (this.isAttached) {
-				// set colspan of titleCell and buttonsCell
-				this.titleCell.colSpan = this.columns.length + 1;
-				this.buttonsCell.colSpan = this.columns.length + 1;
-			}
 		} catch (error) {
 			throw error;
 		}
@@ -303,12 +287,21 @@ class FmCart2 extends FmComponent {
 	/* setters */
 	set columns(columns) {
 		this.#columns = columns;
+
 		if (!this.isRendered) {
+			console.log('not rendered');
 			return;
 		}
 
 		this.#addColumns();
 		this.#addSummaryRow();
+
+		if (this.isAttached) {
+			// set colspan of titleCell and buttonsCell
+			this.titleCell.colSpan = this.columns?.length + 1 || 1;
+			;
+			this.buttonsCell.colSpan = this.columns?.length + 1 || 1;
+		}
 	}
 
 	set cartTitle(title) {
@@ -325,6 +318,16 @@ class FmCart2 extends FmComponent {
 	/* private methods */
 	#addColumns() {
 		try {
+			if (!this.isRendered) {
+				console.log('not rendered, cannot add columns');
+				return;
+			}
+
+			if (!this.columns) {
+				console.log('no columns');
+				return;				
+			}
+
 			// get header row
 			const headerRow = this.shadowRoot.getElementById('header-row');
 
@@ -359,6 +362,14 @@ class FmCart2 extends FmComponent {
 
 	#addRow(resultRow) {
 		try {
+
+			if (this.selectedIds.has(resultRow.recordId) && !this.allowDuplicates) { 
+				return;
+			}
+
+			// add the id to the set
+			this.selectedIds.add(resultRow.recordId);
+
 			// get tbody
 			const tbody = this.shadowRoot.querySelector('tbody');
 
@@ -393,7 +404,7 @@ class FmCart2 extends FmComponent {
 
 			// add delete button
 			const deleteButton = document.createElement('button');
-			deleteButton.textContent = 'Delete';
+			deleteButton.textContent = 'delete';
 			deleteButton.classList.add('delete-button');
 			deleteButton.addEventListener('click', () => {
 				// remove the row
@@ -500,8 +511,7 @@ class FmCart2 extends FmComponent {
 
 	#addSummaryRow() {
 		try {
-			const summaryRow =
-				this.shadowRoot.getElementById('summary-row');
+			const summaryRow = this.ids['summary-row'];
 			this.columns.forEach((column, index) => {
 				const td = document.createElement('td');
 				const { summary_format: format, id } = column;
@@ -632,7 +642,9 @@ class FmCart2 extends FmComponent {
 				const row = this.#addRow(resultRow);
 
 				// add the row to the rows map
-				this.#rows.set(row.id, row);
+				if (row) {
+					this.#rows.set(row.id, row);
+				}
 			});
 
 			// update the summaries

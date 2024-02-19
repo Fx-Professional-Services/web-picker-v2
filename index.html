@@ -3,17 +3,15 @@
 
 <head>
 	<title>Test Page</title>
-	<link rel="stylesheet" href="./styles/main.css">
-	<link rel="stylesheet" href="./styles/FmResults_Cart.css">
 </head>
 
 <body>
 	<fm-picker>
-		<fm-results-list></fm-results-list>
-		<fm-cart id="cart-1"></fm-cart>
-		<fm-cart id="cart-2"></fm-cart>
+		<!-- <fm-results-list id="results-list"></fm-results-list> -->
 	</fm-picker>
-
+	<button id="add-cart" onclick="addCart()">Add Test Cart</button>
+	<button id="add-result-list" onclick="addResultsList()">Add Test Results List</button>
+	<button id="add-result-list-data" onclick="setResultsListData()">Set Data</button>
 </body>
 <!-- classes -->
 <!-- components -->
@@ -27,5 +25,5 @@
 
 
 <!-- main -->
-<script src="./index.js"></script>
+<script defer src="./index.js"></script>
 </html>

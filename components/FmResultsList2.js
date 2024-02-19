@@ -12,7 +12,7 @@ const resultColumns = [
 },
 	{ name: 'Name', type: 'text', item_field_name: 'name', searchable: true },
 	{
-		name: 'Price', type: 'number', item_field_name: 'price', searchable: true, add_sum: true,
+		name: 'Price', type: 'number', item_field_name: 'item__PRICE__list::amount', searchable: true, add_sum: true,
 		// include options for Intl.NumberFormat
 		format: {
 			locale: 'en-US',
@@ -90,12 +90,11 @@ class FmResultsList2 extends FmComponent {
 		return [''];
 	}
 	// static properties
-	static RequestScriptName = '';
 
 	// private properties
 	#firstRequest
 	#lastRequest
-	#response = testResponse.response
+	#response;//testResponse.response
 
 	// constructor
 	constructor() {
@@ -103,10 +102,9 @@ class FmResultsList2 extends FmComponent {
 			super();
 
 			// private properties
-			this.columns = resultColumns; // the columns to display in the table
-			this.idKeyName = ''; // the name of the key field in the data
-			this.allowDuplicates = false; // whether to allow duplicate items in the cart
-			this.selectedRows = new Set(); // the records selected in the table
+			this.columns = []; // the columns to display in the table
+			this.idKeyName; // the name of the key field in the data
+			this.allowDuplicates; // whether to allow duplicate items in the cart
 
 			// render the component
 			this.render();
@@ -148,9 +146,6 @@ class FmResultsList2 extends FmComponent {
 			this.prevButton.addEventListener('click', this.#prevPage);
 			this.nextButton.addEventListener('click', this.#nextPage);
 
-			if (this.request) {
-				this.#requestData();
-			}
 		} catch (error) {
 			throw error;
 		}
@@ -313,16 +308,56 @@ class FmResultsList2 extends FmComponent {
 	}
 
 	set request(request) {
-		// save the first request for reference
+		// add any required properties to the request
+		if (!request.limit) {
+			request.limit = 100;
+		}
+		if (!request.offset || request.offset < 1) {
+			request.offset = 1;
+		}
+
+		// save the last request
 		this.#lastRequest = request;
 
 		if (!this.#firstRequest) {
+			// save the first request for reference
 			this.#firstRequest = request;
 		}
 
+		// perform the request
+		this.#performRequest();
+
+
 	}
 
+	/* public methods */
+
 	/* private methods */
+	#performRequest() {
+		// get the data from FileMaker
+		if (!this.request) {
+			throw new Error('No request object');
+		} 
+
+		console.log(this, this.id)
+
+		// call the script
+		const options = {
+			script: FmComponent.RequestScriptName,
+			script_parameter: this.request,
+			callback: {
+				function_name: 'setResultsListData',
+				options: {
+					id: this.id,
+				}
+			}
+		}
+
+		// call the script
+		this.callBridgeScript(options, FmComponent.ScriptOptions.Suspend);
+
+	}
+
 
 	/**
 	 * Adds columns to the label row.
@@ -347,6 +382,10 @@ class FmResultsList2 extends FmComponent {
 			labelRow.appendChild(th);
 		});
 
+		const titleCell = this.shadowRoot.querySelector('#title-row td');
+		const buttonsCell = this.shadowRoot.querySelector('#buttons-cell');
+		titleCell.colSpan = this.columns.length;
+		buttonsCell.colSpan = this.columns.length;
 
 	}
 
@@ -543,18 +582,6 @@ class FmResultsList2 extends FmComponent {
 		return sum;
 	}
 
-	#requestData() {
-		// get the data from FileMaker
-		if (!this.request) {
-			throw new Error('No request object');
-		}
-
-		// perform script in FileMaker
-
-		// save response
-		this.response = testResponse;
-	}
-
 	#nextPage() {
 		// get the next page of data from FileMaker
 	}
@@ -587,11 +614,12 @@ class FmResultsList2 extends FmComponent {
 			}
 		});
 
+
 		// dispatch the event
-		if (!this.selectedRows.has(row) || this.allowDuplicates) {
-			this.dispatchEvent(e);
-		}
+		this.dispatchEvent(e);
+
 	}
+
 }
 
 customElements.define('fm-results-list', FmResultsList2);
