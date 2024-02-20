@@ -10,7 +10,7 @@ const testCartColumns = [
 	{
 		name: 'Price',
 		type: 'number',
-		item_field_name: 'price',
+		item_field_name: 'item__PRICE__list::amount',
 		editable: true,
 		input_attributes: {
 			min: 0,
@@ -125,6 +125,20 @@ function setResultsListData(data, options) {
 	data = JSON.parse(data);
 	options = JSON.parse(options);
 	picker.setResultsListData(options.id, data);
+}
+
+function initializePicker(options) {
+	options = JSON.parse(options);
+	const { carts, resultsLists } = options;
+
+	resultsLists.forEach((resultsListOptions) => {
+		addResultsList(resultsListOptions);
+	});
+
+	carts.forEach((cartOptions) => {
+		addCart(cartOptions);
+	});
+
 }
 
 // run main function

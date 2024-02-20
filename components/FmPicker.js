@@ -120,7 +120,6 @@ class FmPicker extends FmComponent {
 
 	setResultsListData(id, data) {
 		const resultsList = this.querySelector(`#${id}`);
-		console.log(id, data)
 		resultsList.response = data;
 	}
 }

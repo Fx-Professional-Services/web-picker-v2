@@ -109,23 +109,6 @@ class FmResultsList2 extends FmComponent {
 			// render the component
 			this.render();
 
-			// private properties
-			this.table = this.shadowRoot.querySelector('table')
-			this.thead = this.shadowRoot.querySelector('thead');
-			this.tbody = this.shadowRoot.querySelector('tbody');
-			this.tfoot = this.shadowRoot.querySelector('tfoot');
-			this.titleRow = this.shadowRoot.querySelector('#title-row');
-			this.titleCell = this.shadowRoot.querySelector('#title-row td');
-			this.buttonsCell = this.shadowRoot.querySelector('#buttons-cell');
-			this.labelsRow = this.shadowRoot.querySelector('#label-row');
-			this.summaryRow = this.shadowRoot.querySelector('#summary-row');
-			this.buttonsRow = this.shadowRoot.querySelector('#buttons-row');
-			this.prevButton = this.shadowRoot.querySelector('#prev-button');
-			this.nextButton = this.shadowRoot.querySelector('#next-button');
-
-			// set colspan
-			this.titleCell.colSpan = this.columns.length;
-			this.buttonsCell.colSpan = this.columns.length;
 
 
 		} catch (error) {
@@ -143,8 +126,7 @@ class FmResultsList2 extends FmComponent {
 	connectedCallback() {
 		try {
 			// add event listeners
-			this.prevButton.addEventListener('click', this.#prevPage);
-			this.nextButton.addEventListener('click', this.#nextPage);
+
 
 		} catch (error) {
 			throw error;
@@ -172,6 +154,9 @@ class FmResultsList2 extends FmComponent {
 				this.#updateSummaries();
 			}
 
+			this.ids['prev-button'].addEventListener('click', this.#prevPage.bind(this));
+			this.ids['next-button'].addEventListener('click', this.#nextPage.bind(this));
+
 		} catch (error) {
 			throw error;
 		}
@@ -184,7 +169,7 @@ class FmResultsList2 extends FmComponent {
 		<table>
 				<thead>
 					<tr id='title-row'>
-						<td>Table Title</td>
+						<td id='title-cell'>Table Title</td>
 					</tr>
 					<tr id='search-row'></tr>
 					<tr id='label-row'></tr>
@@ -298,10 +283,26 @@ class FmResultsList2 extends FmComponent {
 			throw new Error('No response object');
 		} else if (!response.data) {
 			throw new Error('No data object in response');
+		} else if (!response.dataInfo) {
+			throw new Error('No dataInfo object in response');
 		}
 
 		// save the response
 		this.#response = response;
+		// get the data from the response
+		const { data, dataInfo } = response;
+
+		// save the data info
+		({
+			database: this.database,
+			layout: this.layout,
+			table: this.table,
+			totalRecordCount: this.totalRecordCount,
+			foundCount: this.foundCount,
+			returnedCount: this.returnedCount
+		} = dataInfo)
+
+		this.records = data;
 
 		// update the table
 		this.render();
@@ -315,6 +316,11 @@ class FmResultsList2 extends FmComponent {
 		if (!request.offset || request.offset < 1) {
 			request.offset = 1;
 		}
+
+		({
+			offset: this.offset,
+			limit: this.limit,
+		} = request)
 
 		// save the last request
 		this.#lastRequest = request;
@@ -339,8 +345,6 @@ class FmResultsList2 extends FmComponent {
 			throw new Error('No request object');
 		} 
 
-		console.log(this, this.id)
-
 		// call the script
 		const options = {
 			script: FmComponent.RequestScriptName,
@@ -357,7 +361,6 @@ class FmResultsList2 extends FmComponent {
 		this.callBridgeScript(options, FmComponent.ScriptOptions.Suspend);
 
 	}
-
 
 	/**
 	 * Adds columns to the label row.
@@ -582,12 +585,34 @@ class FmResultsList2 extends FmComponent {
 		return sum;
 	}
 
-	#nextPage() {
+	#nextPage(event) {
 		// get the next page of data from FileMaker
+		console.log('next page');
+		this.request = {
+			...this.#lastRequest,
+			offset: this.#lastRequest.offset + this.#lastRequest.limit
+		}
+
+		// disable the button if there are no more records
+		if (this.#lastRequest.offset + this.#lastRequest.limit > this.totalRecordCount) {
+			this.ids['next-button'].disabled = true;
+			console.log('no more records');
+		}
+
 	}
 
 	#prevPage() {
 		// get the previous page of data from FileMaker
+		console.log('prev page');
+		this.request = {
+			...this.#lastRequest,
+			offset: this.#lastRequest.offset - this.#lastRequest.limit
+		}
+
+		// disable the button if there are no more records
+		if (this.#lastRequest.offset - this.#lastRequest.limit < 1) {
+			this.ids['prev-button'].disabled = true;
+		}
 	}
 
 	/**
