@@ -22,6 +22,10 @@ class PickerButton extends HTMLElement {
 			button:hover {
 				background-color: #0056b3;
 			}
+
+			button:active {
+				background-color: #004080;
+			}
 		</style>
 		<button><slot></slot></button>
 		`;

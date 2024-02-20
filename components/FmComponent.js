@@ -104,7 +104,7 @@ class FmComponent extends HTMLElement {
 		console.log('calling bridge script with options', options, 'and type', type)
 
 		// call the script
-		FileMaker.PerformScript(FmComponent.CallbackBridgeScript, JSON.stringify(options), type);
+		FileMaker.PerformScriptWithOption(FmComponent.CallbackBridgeScript, JSON.stringify(options), type);
 	}
 
 }

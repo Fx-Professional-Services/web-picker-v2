@@ -90,7 +90,6 @@ class FmCart2 extends FmComponent {
 		try {
 			super();
 			this.selectedIds = new Set();
-			this.allowDuplicates = true;
 
 			this.render();
 		} catch (error) {
