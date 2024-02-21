@@ -6,26 +6,7 @@ class PickerButton extends HTMLElement {
 		template.innerHTML = /*html*/`
 
 		<style>
-			button {
-				border: none;
-				color: white;
-				background-color: #007bff;
-				padding: 4px 8px;
-				text-align: center;
-				text-decoration: none;
-				display: inline-block;
-				font-size: 1em;
-				margin: 0;
-				cursor: pointer;
-				box-sizing: border-box;
-			}
-			button:hover {
-				background-color: #0056b3;
-			}
 
-			button:active {
-				background-color: #004080;
-			}
 		</style>
 		<button><slot></slot></button>
 		`;

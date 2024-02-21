@@ -1,79 +1,3 @@
-// test data
-const cartColumns = [
-	{
-		name: 'Name',
-		type: 'text',
-		item_field_name: 'name',
-		editable: false,
-		format: 'string',
-	},
-	{
-		name: 'Price',
-		type: 'number',
-		item_field_name: 'item__PRICE__list::amount',
-		editable: true,
-		input_attributes: {
-			min: 0,
-			size: 10,
-			step: 0.01,
-			maxLength: 10,
-		},
-		format: 'currency',
-		var_name: 'price',
-		add_sum: true,
-		summary_format: {
-			locale: 'en-US',
-			options: {
-				style: 'currency',
-				currency: 'USD',
-			},
-		},
-	},
-	{
-		name: 'Quantity (max 10)',
-		type: 'number',
-		item_field_name: 'quantity',
-		editable: true,
-		input_attributes: {
-			min: 1,
-			maxLength: 3,
-			size: 3,
-		},
-		var_name: 'quantity',
-		default_value: 1,
-		add_sum: true,
-		max_sum: 10,
-		summary_format: {
-			locale: 'en-US',
-			options: { style: 'decimal', currency: 'USD' },
-		},
-	},
-	{
-		name: 'Subtotal',
-		type: 'expression',
-		item_field_name: 'subtotal',
-		editable: true,
-		summary_format: {
-			locale: 'en-US',
-			options: { style: 'currency', currency: 'USD' },
-		},
-		var_name: 'subtotal',
-		expression: '`$${(vars.quantity * vars.price).toFixed(2)}`',
-		add_sum: true,
-		max_sum: 1000,
-	},
-];
-
-const resultTemplate = {
-	'order item::name': 'name',
-	'order item::price': '`${vars.price}`',
-	'order item::_order id': 'my order id',
-	'order item::quantity': '`${vars.quantity}`',
-	'order item::subtotal': '`${vars.quantity * vars.price}`',
-	'order item::__id': '`${vars.id}`',
-	'order item::week': '`${vars.week}`'
-};
-
 class FmCart2 extends FmComponent {
 	// static methods
 	static get observedAttributes() {
@@ -84,6 +8,7 @@ class FmCart2 extends FmComponent {
 	#columns =[];
 	#rows = new Map();
 	#title;
+	#summariesExceeded = new Set();
 
 	// constructor
 	constructor() {
@@ -113,17 +38,6 @@ class FmCart2 extends FmComponent {
 				;
 				this.ids['buttons-cell'].colSpan = this.columns?.length + 1 || 1;
 		
-
-			// add event listeners
-			this.ids['cancel-button'].addEventListener(
-				'click',
-				this.#handleClickCancel.bind(this),
-			);
-
-			this.ids['done-button'].addEventListener(
-				'click',
-				this.#handleClickDone.bind(this),
-			);
 
 			this.isAttached = true;
 
@@ -168,8 +82,6 @@ class FmCart2 extends FmComponent {
 				<tr id='summary-row'></tr>
 				<tr id='bottom-buttons-row'>
 					<td id='buttons-cell'>
-						<picker-button id='cancel-button'>Cancel</picker-button>
-						<picker-button id='done-button'>Done</picker-button>
 					</td>
 					</tr>
 			</tfoot>
@@ -179,98 +91,10 @@ class FmCart2 extends FmComponent {
 
 	get styles() {
 		return /*css*/ `
-			table {
-				width: 100%;
-				border-collapse: collapse;
-				border: 1px solid #ccc;
-			}
 
-			input {
-				width: 100%;
-				padding: 4px;
-				box-sizing: border-box;
-
-			}
-
-			input[type=number] {
-				text-align: right;
-				border: 1px solid #ccc;
-
-			}
-
-			thead tr {
-				background-color: #f2f2f2;
-			}
-
-			thead th {
-				padding: 4px;
-				text-align: left;
-				font-weight: bold;
-				font-size: 1em;
-			}
-
-			tbody tr:nth-child(even) {
-				background-color: #f9f9f9;
-			}
-
-			tbody td {
-				padding: 4px;
-				box-sizing: border-box;
-				font-size: 1em;
-				margin: 0 -1px -1px 0;
-			}
-
-			tr {
-			}
-
-			tfoot tr {
-				background-color: #f2f2f2;
-			}
-
-			tfoot td {
-				padding: 4px;
-				text-align: right;
-			}
-
-			.input-cell {
-				padding: 0;
-
-			}
-
-			.input-cell * {
-				width: 100%;
-				box-sizing: border-box;
-				border-radius: 0;
-				border-collapse: collapse;
-				margin: 0 -1px -1px 0;
-			}
-
-			.delete-button {
-				padding: 4px 8px;
-				background-color: #dc3545;
-				color: #fff;
-				border: none;
-				border-radius: 0;
-				cursor: pointer;
-				box-sizing: border-box;
-				height: 100%;
-				width: 100%;
-			}
-
-			input:active, input:focus {
-				outline: none;
-				border: 1px solid #007bff;
-			}
-
-			input {
-				border: 1px solid #ccc;
-				font-size: 1em;
-			}
-
-			#buttons-cell {
-				text-align: right;
-			}
-
+		.max-sum-exceeded {
+			color: red;
+		}
 
 		`;
 	}
@@ -312,6 +136,15 @@ class FmCart2 extends FmComponent {
 		}
 
 		this.render();
+	}
+
+	set rows(rows) {
+		// get tbody
+		const tbody = this.shadowRoot.querySelector('tbody');
+
+		// clear the tbody
+		tbody.replaceChildren();
+		this.addItems(rows);
 	}
 
 	/* private methods */
@@ -362,6 +195,20 @@ class FmCart2 extends FmComponent {
 	#addRow(resultRow) {
 		try {
 
+			// add an id to the resultRow if it's missing.
+			// this is to allow for developers to send rows
+			// that are not in the database
+			if (!resultRow.recordId) {
+				console.log('no record id for item in cart');
+				resultRow.recordId = crypto.randomUUID();
+			}
+
+			if (!resultRow.vars) {
+				resultRow.vars = {};
+				resultRow.vars.id = resultRow.recordId;
+			}
+
+			// check if the id is already in the set
 			if (this.selectedIds.has(resultRow.recordId) && !this.allowDuplicates) { 
 				return;
 			}
@@ -405,13 +252,10 @@ class FmCart2 extends FmComponent {
 			const deleteButton = document.createElement('button');
 			deleteButton.textContent = 'delete';
 			deleteButton.classList.add('delete-button');
-			deleteButton.addEventListener('click', () => {
-				// remove the row
-				row.remove();
-				// remove from rows map
-				this.#rows.delete(row.id);
-				// update the summaries
-				this.#updateAllSummaries();
+			deleteButton.addEventListener('click', (event) => {
+				// get the row
+				const tr = event.target.closest('tr');
+				this.#deleteRow(tr);
 			});
 
 			// create td element
@@ -593,7 +437,9 @@ class FmCart2 extends FmComponent {
 				var_name: varName,
 				summary_format: summaryFormat,
 				id,
+				max_sum: maxSum,
 			} = column;
+
 
 			// get all body cells for this column
 			const cells = this.shadowRoot.querySelectorAll(
@@ -611,18 +457,42 @@ class FmCart2 extends FmComponent {
 				return acc + parseFloat(value);
 			}, 0);
 
+			// update the summary cell
+			const summaryCell = this.shadowRoot.getElementById(
+				`summary-col-${id}`,
+			);
+
+			// check if the sum exceeds the max_sum
+			if (maxSum && sum > maxSum) {
+				// add a class to the summary cell
+				summaryCell.classList.add('max-sum-exceeded');
+				// add property to the column
+				this.#summariesExceeded.add(column);
+			} else if (summaryCell.classList.contains('max-sum-exceeded')) {
+				// remove the class
+				summaryCell.classList.remove('max-sum-exceeded');
+				// remove property from the column
+				this.#summariesExceeded.delete(column);
+			}
+
 			// format the sum
 			const formattedSum = sum.toLocaleString(
 				summaryFormat.locale,
 				summaryFormat.options,
 			);
 
-			// update the summary cell
-			const summaryCell = this.shadowRoot.getElementById(
-				`summary-col-${id}`,
-			);
+
 			summaryCell.textContent = formattedSum;
-		} catch (error) { }
+
+			return {
+				varName,
+				sum,
+				formattedSum,
+			};
+
+		} catch (error) { 
+
+		}
 	}
 
 	#updateAllSummaries() {
@@ -631,6 +501,17 @@ class FmCart2 extends FmComponent {
 				this.#updateSummary(column);
 			}
 		});
+	}
+
+	#deleteRow(row) {
+		// remove the row
+		row.remove();
+		// remove from rows map
+		this.#rows.delete(row.id);
+		// update the summaries
+		this.#updateAllSummaries();
+		// remove the id from the set
+		this.selectedIds.delete(row.recordId);
 	}
 
 	/* public methods */
@@ -655,11 +536,21 @@ class FmCart2 extends FmComponent {
 
 	getResults() {
 		const results = [];
+		// check for exceeded summaries
+		if (this.#summariesExceeded.size > 0) {
+			// alert the user
+			const error = new Error('Summary value exceeds maximum value.');
+			alert(error.message);
+			throw error;
+		}
+
 		this.#rows.forEach((row) => {
 			const result = {};
-			const data = row.record;
+			const data = row.record.fieldData;
 			const vars = row.vars;
+			console.log(data, vars);
 			Object.entries(this.resultTemplate).forEach(([key, value]) => {
+				console.log(key, value);
 
 				if (value.startsWith('`')) {
 					// if the value is a template string, evaluate it
@@ -682,12 +573,6 @@ class FmCart2 extends FmComponent {
 	}
 
 	/* handlers */
-
-	#handleClickCancel(event) {
-		console.log('cancel button clicked');
-	}
-
-	#handleClickDone(event) { }
 
 	#emitVariableChanged(event) {
 		// get the tr (target closest tr if the event target is an input element)

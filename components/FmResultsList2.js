@@ -1,88 +1,4 @@
-// test data
-const resultColumns = [
-	{
-		name: 'ID', type: 'number', item_field_name: 'id', searchable: true, add_sum: true,
-		format: {
-			locale: 'en-US',
-			options: {
-				style: 'decimal'
-			}
-		
-		}
-},
-	{ name: 'Name', type: 'text', item_field_name: 'name', searchable: true },
-	{
-		name: 'Price', type: 'number', item_field_name: 'item__PRICE__list::amount', searchable: true, add_sum: true,
-		// include options for Intl.NumberFormat
-		format: {
-			locale: 'en-US',
-			options: {
-				style: 'currency',
-				currency: 'USD'
-			}
-		}
-	},
-	{
-		cart_ids: ["cart-1"],
-		name: "cart 1",
-		type: "cart-button"
-	}, {
-		cart_ids: ["cart-2"],
-		name: "cart 2",
-		type: "cart-button"
-	}
-]
 
-const testResponse = {
-	"response": {
-		"dataInfo": {
-			"database": "ProductDB",
-			"layout": "ProductLayout",
-			"table": "ProductTable",
-			"totalRecordCount": 10,
-			"foundCount": 10,
-			"returnedCount": 10
-		},
-		"data": [
-			{
-				"fieldData": {
-					"id": 1,
-					"name": "Product A",
-					"description": "This is product A",
-					"price": 29.99,
-					"stock": 100
-				},
-				"modId": "0",
-				"recordId": "1001",
-				"portalData": {}
-			},
-			{
-				"fieldData": {
-					"id": 2,
-					"name": "Product B",
-					"description": "This is product B",
-					"price": 39.99,
-					"stock": 200
-				},
-				"modId": "1",
-				"recordId": "1002",
-				"portalData": {}
-			},
-			{
-				"fieldData": {
-					"id": 3,
-					"name": "Product C",
-					"description": "This is product C",
-					"price": 49.99,
-					"stock": 150
-				},
-				"modId": "2",
-				"recordId": "1003",
-				"portalData": {}
-			}
-		]
-	}
-};
 
 class FmResultsList2 extends FmComponent {
 	// static methods
@@ -105,6 +21,7 @@ class FmResultsList2 extends FmComponent {
 			this.columns = []; // the columns to display in the table
 			this.idKeyName; // the name of the key field in the data
 			this.allowDuplicates; // whether to allow duplicate items in the cart
+			this.findType = 'AND'; // the type of search either 'AND' or 'OR'
 
 			// render the component
 			this.render();
@@ -191,79 +108,7 @@ class FmResultsList2 extends FmComponent {
 
 	get styles() {
 		return /*css*/ `
-		:host {
-			display: block;
-		}
 
-		table {
-			width: 100%;
-			border-collapse: collapse;
-		}
-
-		thead {
-			background-color: #f2f2f2;
-		}
-
-		tbody {
-			background-color: #ffffff;
-		}
-
-		tfoot {
-			background-color: #f2f2f2;
-		}
-
-		#title-row {
-			background-color: #e6e6e6;
-			font-weight: bold;
-			text-align: center;
-		}
-
-		#label-row {
-			background-color: #f2f2f2;
-			font-weight: bold;
-		}
-
-		#summary-row {
-			background-color: #e6e6e6;
-			font-weight: bold;
-		}
-
-		#buttons-row {
-			background-color: #f2f2f2;
-			font-weight: bold;
-		}
-
-		#search-row {
-			background-color: #f2f2f2;
-		}
-
-		th {
-			border: 1px solid #dddddd;
-			text-align: left;
-			padding: 5px;
-		}
-
-		td {
-			border: 1px solid #dddddd;
-			text-align: left;
-			padding: 5px;
-		}
-
-		tr:nth-child(even) {
-			background-color: #f2f2f2;
-		}
-
-		tr:nth-child(odd) {
-			background-color: #ffffff;
-		}
-
-		tr:hover {
-			background-color: #f2f2f2;
-		}
-
-		#buttons-cell {
-			
-		}
 		`;
 	}
 
@@ -323,11 +168,13 @@ class FmResultsList2 extends FmComponent {
 		} = request)
 
 		// save the last request
-		this.#lastRequest = request;
+		this.#lastRequest = { ...request };
 
 		if (!this.#firstRequest) {
-			// save the first request for reference
-			this.#firstRequest = request;
+			// save a complete clone of the first request
+			console.log('saving first request', request)
+			this.#firstRequest = Object.freeze({ ...request });
+
 		}
 
 		// perform the request
@@ -385,10 +232,14 @@ class FmResultsList2 extends FmComponent {
 			labelRow.appendChild(th);
 		});
 
+		// add one td for the search
+		const th = document.createElement('th');
+		labelRow.appendChild(th);
+
 		const titleCell = this.shadowRoot.querySelector('#title-row td');
 		const buttonsCell = this.shadowRoot.querySelector('#buttons-cell');
-		titleCell.colSpan = this.columns.length;
-		buttonsCell.colSpan = this.columns.length;
+		titleCell.colSpan = this.columns.length + 1;
+		buttonsCell.colSpan = this.columns.length + 1;
 
 	}
 
@@ -407,7 +258,7 @@ class FmResultsList2 extends FmComponent {
 			if (searchable) {
 				// add an input to the th
 				const input = document.createElement('input');
-				input.type = type;
+				input.type = 'text';
 				input.id = `search-${id}`;
 				input.placeholder = `Search ${name}`;
 				th.appendChild(input);
@@ -417,6 +268,16 @@ class FmResultsList2 extends FmComponent {
 			searchRow.appendChild(th);
 
 		});
+
+		// add the search button
+		const th = document.createElement('th');
+		const button = document.createElement('picker-button');
+		button.innerHTML = 'Search';
+		th.appendChild(button);
+		searchRow.appendChild(th);
+
+		// add event listener
+		button.addEventListener('click', this.#performFind.bind(this));
 
 	}
 
@@ -441,6 +302,11 @@ class FmResultsList2 extends FmComponent {
 
 			summaryRow.appendChild(th);
 		});
+
+		// add one th for the search button
+		const th = document.createElement('th');
+		summaryRow.appendChild(th);
+
 
 	}
 
@@ -500,6 +366,10 @@ class FmResultsList2 extends FmComponent {
 			const td = this.#addCell(column, record, tr);
 			tr.appendChild(td);
 		});
+
+		// add one additional cell for the search button
+		const td = document.createElement('td');
+		tr.appendChild(td);
 
 		// add the row to the tbody
 		tbody.appendChild(tr);
@@ -613,6 +483,57 @@ class FmResultsList2 extends FmComponent {
 		if (this.#lastRequest.offset - this.#lastRequest.limit < 1) {
 			this.ids['prev-button'].disabled = true;
 		}
+	}
+
+	#performFind() {
+		// clone the request
+		const request = { ...this.#firstRequest };
+		// clone the query
+		const query = [...request.query];
+		// get the search inputs that have a value
+		const inputs = this.shadowRoot.querySelectorAll('th input');
+
+		// get the search type
+		const type = this.findType;
+		console.log('performing find')
+
+
+		// loop through the inputs and add the search
+		let termCount = 0;
+		inputs.forEach(input => {
+			// if (!input.value) {
+			// 	return;
+			// }
+			termCount++;
+			const id = input.id.replace('search-', '');
+			const column = this.columns[id];
+			const { item_field_name: fieldName } = column;
+			const value = input.value;
+			if (type === 'OR') {
+				query.push({ [fieldName]: value });
+			} else if (type === 'AND') {
+				query.forEach((q, index) => {
+					query[index][fieldName] = value;
+				});
+			}
+		})
+
+		// if all inputs are empty, reset the query
+		if (termCount === 0) {
+			console.log('performing initial request', this.#firstRequest)
+			// clone the first request
+			this.request = { ...this.#firstRequest };
+			return;
+		}
+
+		// set the new request
+		this.request = {
+			...this.#firstRequest,
+			query,
+
+		}
+
+
 	}
 
 	/**

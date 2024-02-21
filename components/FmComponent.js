@@ -1,110 +1,127 @@
 // base class for all components
 class FmComponent extends HTMLElement {
+  // static enums
+  static ScriptOptions = {
+    Continue: '0',
+    Halt: '1',
+    Exit: '2',
+    Resume: '3',
+    Pause: '4',
+    Suspend: '5',
+  };
 
-	// static enums
-	static ScriptOptions = {
-		Continue: '0',
-		Halt: '1',
-		Exit: '2',
-		Resume: '3',
-		Pause: '4',
-		Suspend: '5',
-	}
+  // static methods
+  static get observedAttributes() {
+    return [''];
+  }
 
-	// static methods
-	static get observedAttributes() {
-		return [''];
-	}
+  // static properties
+  static CallbackBridgeScript =
+    'sub: perform script and callback with result (web picker v3)'; // the name of the connector script
+  static RequestScriptName = 'dep: execute data api (web picker v3)'; // script to call to get data from FM
+  static SendResultsScriptName =
+    'return parameter as result (web picker v3)'; // the name of the FM script to call to send results
+  static BlankScriptName = 'blank script (web picker v3)'; // name of the blank FM script to call to resume the callstack
 
-	// static properties
-	static CallbackBridgeScript = 'sub: perform script and callback with result (web picker v3)'; // the name of the connector script
-	static RequestScriptName = 'dep: execute data api (web picker v3)'; // script to call to get data from FM
-	static SendResultsScriptName = 'return parameter as result (web picker v3)'; // the name of the FM script to call to send results
-	static BlankScriptName = 'blank script (web picker v3)'; // name of the blank FM script to call to resume the callstack
+  // private properties
+  #template;
+  #styles;
 
-	// private properties
-	#template
-	#styles
+  // constructor
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+    this.#template = document.createElement('template');
+    this.#styles = document.createElement('style');
+    this.isRendered = false;
+    this.isRendering = false;
+    this.ids = {};
+  }
 
-	// constructor
-	constructor() {
-		super();
-		this.attachShadow({ mode: 'open' });
-		this.#template = document.createElement('template');
-		this.#styles = document.createElement('style');
-		this.isRendered = false;
-		this.isRendering = false;
-		this.ids = {};
-
-	}
-
-	// getters and setters
-	get template() {
-		return /*html*/`
+  // getters and setters
+  get template() {
+    return /*html*/ `
 		`;
+  }
 
-	}
-
-	get styles() { 
-		return /*css*/ `
+  get styles() {
+    return /*css*/ `
 		`;
+  }
 
-	}
+  // lifecycle methods
 
-	// lifecycle methods
+  attributeChangedCallback(name, oldValue, newValue) {
+    // be default, render when an observed attribute changes
+    this.render();
+  }
 
-	attributeChangedCallback(name, oldValue, newValue) { 
-		// be default, render when an observed attribute changes
-		this.render();
+  // public methods
 
-	}
+  render() {
+    // call sub-class render function during sub-class constructor
+    // sub-class render function should call super.render() first
+    this.isRendering = true;
 
-	// public methods
+    const fragment = document.createDocumentFragment();
 
+    // evaluate template and style
+    this.#template.innerHTML = this.template;
+    this.#styles.textContent = this.styles;
 
-	render() {
+    // append to shadow root
+    fragment.append(this.#styles);
+    fragment.append(this.#template.content.cloneNode(true));
 
-		// call sub-class render function during sub-class constructor
-		// sub-class render function should call super.render() first
-		this.isRendering = true;
+    // update the shadow root
+    this.shadowRoot.replaceChildren(fragment);
 
-		const fragment = document.createDocumentFragment();
+    // set isRendered to true
+    this.isRendered = true;
+    this.isRendering = false;
 
-		// evaluate template and style
-		this.#template.innerHTML = this.template;
-		this.#styles.textContent = this.styles;
+    // store the shadow elements by id
+    const elements = this.shadowRoot.querySelectorAll('[id]');
+    elements.forEach((element) => {
+      this.ids[element.id] = element;
+    });
+  }
 
-		// append to shadow root
-		fragment.append(this.#styles);
-		fragment.append(this.#template.content.cloneNode(true));
+  callBridgeScript(
+    options,
+    type = FmComponent.ScriptOptions.Suspend,
+  ) {
+    if (!window.FileMaker) {
+      console.error('FileMaker object not found');
+      return;
+    }
 
-		// update the shadow root
-		this.shadowRoot.replaceChildren(fragment);
+    // call the script
+    FileMaker.PerformScriptWithOption(
+      FmComponent.CallbackBridgeScript,
+      JSON.stringify(options),
+      type,
+    );
+  }
 
-		// set isRendered to true
-		this.isRendered = true;
-		this.isRendering = false;
+  sendResultToPausedScript(result) {
+    if (!window.FileMaker) {
+      console.error('FileMaker object not found');
+      return;
+    }
 
-		// store the shadow elements by id
-		const elements = this.shadowRoot.querySelectorAll('[id]');
-		elements.forEach((element) => {
-			this.ids[element.id] = element;
-		});
-
-
-	}
-
-	callBridgeScript(options, type = FmComponent.ScriptOptions.Suspend) {
-
-		if(!window.FileMaker) {
-			console.error('FileMaker object not found');
-			return;
-		}
-
-		console.log('calling bridge script with options', options, 'and type', type)
-
-		// call the script
-		FileMaker.PerformScriptWithOption(FmComponent.CallbackBridgeScript, JSON.stringify(options), type);
-	}
-
+    // call the script to return result
+    FileMaker.PerformScriptWithOption(
+      FmComponent.SendResultsScriptName,
+      JSON.stringify(result),
+      FmComponent.ScriptOptions.Suspend,
+		);
+		
+		// call the blank script to resume the callstack
+		FileMaker.PerformScriptWithOption(
+			FmComponent.BlankScriptName,
+			'',
+			FmComponent.ScriptOptions.Resume
+		);
+  }
 }
