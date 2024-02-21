@@ -1,6 +1,6 @@
 // container class to hold the results list and cart elements
 class FmPicker extends FmComponent {
-	constructor() { 
+	constructor() {
 		super();
 		this.carts = [];
 		this.resultsLists = [];
@@ -11,29 +11,29 @@ class FmPicker extends FmComponent {
 		return /*html*/`
 		<div id='fm-picker'>
 			<slot></slot>
+			<div id='buttons'>
+				<picker-button id='cancel-button'>Cancel</picker-button>
+				<picker-button id='done-button'>Done</picker-button>
+			</div>
+
 		</div>
 		`;
 	}
 
 	get styles() {
 		return /*css*/`
-		:host {
-			display: block;
-		}
 
-		#fm-picker {
-			display: flex;
-			flex-direction: column;
-			flex-wrap: nowrap;
-			align-items: stretch;
-			width: 100%;
-			gap: 1em;
-		}
+
+
 		`;
 	}
 
 	render() {
 		super.render();
+
+		// add event listeners
+		this.ids['done-button'].addEventListener('click', this.getResults.bind(this));
+		this.ids['cancel-button'].addEventListener('click', this.cancel.bind(this));
 	}
 
 	connectedCallback() {
@@ -46,7 +46,7 @@ class FmPicker extends FmComponent {
 		// remove any existing carts and results lists
 		const elements = [...this.carts, ...this.resultsLists];
 
-		elements.forEach((element) => { 
+		elements.forEach((element) => {
 			element.remove();
 		});
 
@@ -67,7 +67,7 @@ class FmPicker extends FmComponent {
 
 	#addToCart(event) {
 		const { detail } = event;
-		const { cartIds, row: resultRow } = detail; 
+		const { cartIds, row: resultRow } = detail;
 
 
 		cartIds.forEach((cartId) => {
@@ -85,7 +85,7 @@ class FmPicker extends FmComponent {
 		cart.cartTitle = options.title || '';
 		cart.rows = options.rows || [];
 		cart.resultTemplate = options.template || {};
-		cart.allowDuplicates = options.allow_duplicates || true;
+		cart.allowDuplicates = options.allow_duplicates;
 
 		// set the cart id
 		cart.id = options.cart_id;
@@ -121,6 +121,23 @@ class FmPicker extends FmComponent {
 	setResultsListData(id, data) {
 		const resultsList = this.querySelector(`#${id}`);
 		resultsList.response = data;
+	}
+
+	getResults() {
+		const results = [];
+		this.carts.forEach((cart) => {
+			results.push(cart.getResults());
+		});
+
+		// send result to paused script
+		this.sendResultToPausedScript(results);
+
+		return results;
+	}
+
+	cancel() {
+		// send result to paused script
+		this.sendResultToPausedScript({ user_action: 'cancel' });
 	}
 }
 
