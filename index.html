@@ -3,23 +3,28 @@
 
 <head>
 	<title>Test Page</title>
-	<link rel="stylesheet" href="./styles/main.css">
-	<link rel="stylesheet" href="./styles/FmResults_Cart.css">
+	<link rel="stylesheet" type="text/css" href="./styles.css">
 </head>
 
 <body>
-	<h1>Test Page</h1>
-	<p>Open the console to see any output from your JavaScript
-		functions.</p>
+	<fm-picker>
+		<!-- <fm-results-list id="results-list"></fm-results-list> -->
+	</fm-picker>
+	<!-- <button id="add-cart" onclick="addCart()">Add Test Cart</button>
+	<button id="add-result-list" onclick="addResultsList()">Add Test Results List</button>
+	<button id="add-result-list-data" onclick="setResultsListData()">Set Data</button> -->
 </body>
 <!-- classes -->
-<script src="./code/FmResultsList.js"></script>
-<script src="./code/FmCart.js"></script>
+<!-- components -->
+<script src="./components/FmComponent.js"></script>
+<script src="./components/PickerButton.js"></script>
+<script src="./components/FmPicker.js"></script>
+<script src="./components/FmResultsList.js"></script>
+<script src="./components/FmCart.js"></script>
 
 <!-- tests -->
-<!-- <script defer src="./tests/FmResultsList.tests.js"></script>
-<script defer src="./tests/FmCart.tests.js"></script> -->
+
 
 <!-- main -->
-<script src="index.js"></script>
+<script defer src="./index.js"></script>
 </html>
