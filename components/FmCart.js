@@ -1,4 +1,4 @@
-class FmCart2 extends FmComponent {
+class FmCart extends FmComponent {
 	// static methods
 	static get observedAttributes() {
 		return [''];
@@ -663,4 +663,4 @@ class FmCart2 extends FmComponent {
 	}
 }
 
-customElements.define('fm-cart', FmCart2);
+customElements.define('fm-cart', FmCart);

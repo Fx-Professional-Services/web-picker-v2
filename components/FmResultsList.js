@@ -1,6 +1,6 @@
 
 
-class FmResultsList2 extends FmComponent {
+class FmResultsList extends FmComponent {
 	// static methods
 	static get observedAttributes() {
 		return [''];
@@ -568,4 +568,4 @@ class FmResultsList2 extends FmComponent {
 
 }
 
-customElements.define('fm-results-list', FmResultsList2);
+customElements.define('fm-results-list', FmResultsList);
