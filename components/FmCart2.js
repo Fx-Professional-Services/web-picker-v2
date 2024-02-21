@@ -9,12 +9,14 @@ class FmCart2 extends FmComponent {
 	#rows = new Map();
 	#title;
 	#summariesExceeded = new Set();
+	#summariesUnderMinimum = new Set();
 
 	// constructor
 	constructor() {
 		try {
 			super();
 			this.selectedIds = new Set();
+			this.maxSelections = Infinity;
 
 			this.render();
 		} catch (error) {
@@ -96,6 +98,9 @@ class FmCart2 extends FmComponent {
 			color: red;
 		}
 
+		.min-sum-under {
+			color: orange;
+		}
 		`;
 	}
 
@@ -146,6 +151,7 @@ class FmCart2 extends FmComponent {
 		tbody.replaceChildren();
 		this.addItems(rows);
 	}
+
 
 	/* private methods */
 	#addColumns() {
@@ -211,6 +217,12 @@ class FmCart2 extends FmComponent {
 			// check if the id is already in the set
 			if (this.selectedIds.has(resultRow.recordId) && !this.allowDuplicates) { 
 				return;
+			}
+
+			if (this.selectedIds.size >= this.maxSelections) {
+				const error = new Error('Maximum selections reached.');
+				alert(error.message);
+				throw error;
 			}
 
 			// add the id to the set
@@ -318,6 +330,14 @@ class FmCart2 extends FmComponent {
 				// set input attributes
 				if (input_attributes) {
 					Object.entries(input_attributes).forEach(([key, value]) => {
+						// if the value is a string that matches a field in the record, use that value
+						// commmenting this out for now, will test later. 
+						// not currently a needed feature.
+
+						// if (row.record.fieldData[value]) {
+						// 	console.log('value is a field in the record', value, row.record.fieldData[value])
+						// 	value = row.record.fieldData[value];
+						// }
 						input.setAttribute(key, value);
 					});
 				}
@@ -360,7 +380,7 @@ class FmCart2 extends FmComponent {
 				const { summary_format: format, id } = column;
 				td.id = `summary-col-${id}`;
 				td.headers = `col-${id}`;
-				if (column.add_sum) {
+				if (column.add_sum && format) {
 					td.classList.add('sum');
 					td.textContent = new Intl.NumberFormat(
 						format.locale || null,
@@ -438,6 +458,7 @@ class FmCart2 extends FmComponent {
 				summary_format: summaryFormat,
 				id,
 				max_sum: maxSum,
+				min_sum: minSum,
 			} = column;
 
 
@@ -473,6 +494,15 @@ class FmCart2 extends FmComponent {
 				summaryCell.classList.remove('max-sum-exceeded');
 				// remove property from the column
 				this.#summariesExceeded.delete(column);
+			}
+
+			if (minSum && sum < minSum) {
+				console.log('sum is under minimum', column);
+				this.#summariesUnderMinimum.add(column);
+				summaryCell.classList.add('min-sum-under');
+			} else if (summaryCell.classList.contains('min-sum-under')) { 
+				summaryCell.classList.remove('min-sum-under');
+				this.#summariesUnderMinimum.delete(column);
 			}
 
 			// format the sum
@@ -535,14 +565,34 @@ class FmCart2 extends FmComponent {
 	}
 
 	getResults() {
-		const results = [];
+
 		// check for exceeded summaries
 		if (this.#summariesExceeded.size > 0) {
+			let errorMessage = 'The following summaries have exceeded their maximum value:\n';
+			this.#summariesExceeded.forEach((column) => { 
+				errorMessage += `${column.name} exceeds ${column.max_sum}.\n`;
+			});	
+
 			// alert the user
-			const error = new Error('Summary value exceeds maximum value.');
+			const error = new Error(errorMessage);
 			alert(error.message);
 			throw error;
 		}
+
+		// check for under minimum summaries
+		if (this.#summariesUnderMinimum.size > 0) {
+			let errorMessage = 'The following summaries are under their minimum value:\n';
+			this.#summariesUnderMinimum.forEach((column) => { 
+				errorMessage += `${column.name} is under ${column.min_sum}.\n`;
+			});	
+
+			// alert the user
+			const error = new Error(errorMessage);
+			alert(error.message);
+			throw error;
+		}
+
+		const results = [];
 
 		this.#rows.forEach((row) => {
 			const result = {};

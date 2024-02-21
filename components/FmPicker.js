@@ -86,6 +86,7 @@ class FmPicker extends FmComponent {
 		cart.rows = options.rows || [];
 		cart.resultTemplate = options.template || {};
 		cart.allowDuplicates = options.allow_duplicates;
+		cart.maxSelections = options.max_selections;
 
 		// set the cart id
 		cart.id = options.cart_id;
@@ -124,9 +125,10 @@ class FmPicker extends FmComponent {
 	}
 
 	getResults() {
-		const results = [];
+		const results = {};
 		this.carts.forEach((cart) => {
-			results.push(cart.getResults());
+			const result = cart.getResults();
+			results[cart.id] = result;
 		});
 
 		// send result to paused script
