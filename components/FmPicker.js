@@ -10,6 +10,7 @@ class FmPicker extends FmComponent {
 	get template() {
 		return /*html*/`
 		<div id='fm-picker'>
+
 			<slot></slot>
 			<div id='buttons'>
 				<picker-button id='cancel-button'>Cancel</picker-button>
@@ -23,7 +24,32 @@ class FmPicker extends FmComponent {
 	get styles() {
 		return /*css*/`
 
+		#fm-picker {
+			display: grid;
+			grid-template-rows: 500px 150px 30px;
+			row-gap: 10px;
+			grid-template-columns: 1fr;
+			padding: 10px;
+		}
 
+		#buttons {
+			display: flex;
+			align-items: flex-start;
+			grid-row: 3;
+		}
+
+		::slotted(fm-results-list) {
+			height: 100%;
+			grid-row: 1;
+			overflow-y: scroll;
+			overflow-x: hidden;
+
+		}
+
+		::slotted(fm-cart) {
+			height: 100%;
+			grid-row: 2;
+		}
 
 		`;
 	}

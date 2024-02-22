@@ -101,6 +101,12 @@ class FmCart extends FmComponent {
 		.min-sum-under {
 			color: orange;
 		}
+
+		table {
+			width: 100%;
+			border-collapse: collapse;
+
+		}
 		`;
 	}
 

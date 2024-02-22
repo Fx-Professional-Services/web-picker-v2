@@ -109,6 +109,33 @@ class FmResultsList extends FmComponent {
 	get styles() {
 		return /*css*/ `
 
+		thead {
+			background-color: #f0f0f0;
+			position: sticky;
+			top: 0;
+			border-bottom: 1px solid #000;
+		}
+
+		tfoot {
+			background-color: #f0f0f0;
+			position: sticky;
+			bottom: 0;
+			border-top: 1px solid #000;
+		}
+
+		table {
+			width: 100%;
+			border-collapse: collapse;
+		}
+
+		th {
+			text-align: left;
+		}
+
+		th input {
+			width: 90%;
+		}
+
 		`;
 	}
 
