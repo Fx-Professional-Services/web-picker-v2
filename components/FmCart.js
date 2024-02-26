@@ -17,6 +17,7 @@ class FmCart extends FmComponent {
 			super();
 			this.selectedIds = new Set();
 			this.maxSelections = Infinity;
+			this.idKeyName;
 
 			this.render();
 		} catch (error) {
@@ -102,11 +103,25 @@ class FmCart extends FmComponent {
 			color: orange;
 		}
 
+		thead {
+			background-color: #f0f0f0;
+			position: sticky;
+			top: 0;
+			border-bottom: 1px solid #000;
+		}
+
+		tfoot {
+			background-color: #f0f0f0;
+			position: sticky;
+			bottom: 0;
+			border-top: 1px solid #000;
+		}
+
 		table {
 			width: 100%;
 			border-collapse: collapse;
-
 		}
+
 		`;
 	}
 
@@ -212,12 +227,18 @@ class FmCart extends FmComponent {
 			// that are not in the database
 			if (!resultRow.recordId) {
 				console.log('no record id for item in cart');
-				resultRow.recordId = crypto.randomUUID();
+				resultRow.recordId = resultRow.record.fieldData[this.idKeyName] ||
+					resultRow.record[this.idKeyName] || null;
+
+			}
+
+			if (!resultRow.recordId) {
+				console.log('no record id for item in cart');
+				return;
 			}
 
 			if (!resultRow.vars) {
 				resultRow.vars = {};
-				resultRow.vars.id = resultRow.recordId;
 			}
 
 			// check if the id is already in the set
@@ -413,7 +434,7 @@ class FmCart extends FmComponent {
 			const { fieldData } = item;
 
 			// get value
-			let value = fieldData[itemFieldName] || '';
+			let value = itemFieldName.includes('::') ? fieldData[itemFieldName] : '';
 
 			// if there is an expression, evaluate it
 			if (expression) {
@@ -616,8 +637,8 @@ class FmCart extends FmComponent {
 				} else if (value.startsWith('`')) {
 					// if the value is a template string, evaluate it
 					value = eval(value);
-				} else if (data[value]) {
-					// if the value is a field name, get the value from the data object
+				} else if (value.includes('::')) {
+					// if the value is a fully qualified field name, get the value from the data object
 					value = data[value];
 				} else {
 					// return the literal value

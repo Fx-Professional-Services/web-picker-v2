@@ -174,6 +174,18 @@ class FmResultsList extends FmComponent {
 			returnedCount: this.returnedCount
 		} = dataInfo)
 
+		// fully qualify all field names
+		data.forEach((record, index) => { 
+			// for each key in fieldData
+			const { fieldData } = record;
+			Object.keys(fieldData).forEach(key => {
+				if (!key.includes("::")) {
+					fieldData[`${this.table}::${key}`] = fieldData[key];
+					delete fieldData[key];
+				}
+			});
+		});
+
 		this.records = data;
 
 		// update the table
@@ -374,19 +386,22 @@ class FmResultsList extends FmComponent {
 		tr.record = record;
 
 		// get the record id
-		const recordId = record[this.idKeyName];
+		const recordId = record?.fieldData[this.idKeyName] || record[this.idKeyName] || '';
 
 		// add a uuid for the row
+		/**
+		 * to ensure that record is recognized as a duplicate
+		 * between renders and if there is more than one results list,
+		 * we assign a unique row id but also retrieve the record id
+		 * from the data and assign it to the row as well.
+		 */
 		tr.id = crypto.randomUUID();
 
 		// add the record id, fallback to the row id
-		tr.recordId = recordId || tr.id;
+		tr.recordId = recordId
 
 		// add a vars object
 		tr.vars = {};
-
-		// add the record id to the vars object
-		tr.vars.id = tr.recordId;
 
 		// add the cells to the row
 		this.columns.forEach(column => {
