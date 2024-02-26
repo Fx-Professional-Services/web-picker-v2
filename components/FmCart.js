@@ -608,7 +608,12 @@ class FmCart extends FmComponent {
 			Object.entries(this.resultTemplate).forEach(([key, value]) => {
 				console.log(key, value);
 
-				if (value.startsWith('`')) {
+				if (!value) {
+					result[key] = '';
+				} else if (typeof value === 'boolean') {
+					// if it's a boolean 
+					result[key] = value;
+				} else if (value.startsWith('`')) {
 					// if the value is a template string, evaluate it
 					value = eval(value);
 				} else if (data[value]) {
