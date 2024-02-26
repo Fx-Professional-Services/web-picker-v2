@@ -26,7 +26,7 @@ class FmPicker extends FmComponent {
 
 		#fm-picker {
 			display: grid;
-			grid-template-rows: minmax(55%, 60%) minmax(45%, 1fr) 50px
+			grid-template-rows: 500px 150px 30px;;
 			row-gap: 10px;
 			grid-template-columns: 1fr;
 			padding: 10px;
@@ -83,6 +83,8 @@ class FmPicker extends FmComponent {
 		::slotted(fm-cart) {
 			height: 100%;
 			grid-row: 2;
+			overflow-y: scroll;
+
 		}
 
 		`;
