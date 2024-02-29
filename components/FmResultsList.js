@@ -300,6 +300,9 @@ class FmResultsList extends FmComponent {
 				input.type = 'text';
 				input.id = `search-${id}`;
 				input.placeholder = `Search ${name}`;
+
+				// add input event listener
+				input.addEventListener('change', this.#performFind.bind(this));
 				th.appendChild(input);
 			}
 
@@ -307,16 +310,6 @@ class FmResultsList extends FmComponent {
 			searchRow.appendChild(th);
 
 		});
-
-		// add the search button
-		const th = document.createElement('th');
-		const button = document.createElement('picker-button');
-		button.innerHTML = 'Search';
-		th.appendChild(button);
-		searchRow.appendChild(th);
-
-		// add event listener
-		button.addEventListener('click', this.#performFind.bind(this));
 
 	}
 
@@ -387,6 +380,12 @@ class FmResultsList extends FmComponent {
 
 		// get the record id
 		const recordId = record?.fieldData[this.idKeyName] || record[this.idKeyName] || '';
+
+		if (!recordId) {
+			throw new Error('No record id found in record data at key: ' + this.idKeyName);
+		}
+
+		tr.dataset.recordId = recordId;
 
 		// add a uuid for the row
 		/**

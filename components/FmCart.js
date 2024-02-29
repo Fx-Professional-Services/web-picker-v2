@@ -228,18 +228,21 @@ class FmCart extends FmComponent {
 			if (!resultRow.recordId) {
 				console.log('no record id for item in cart');
 				resultRow.recordId = resultRow.record.fieldData[this.idKeyName] ||
-					resultRow.record[this.idKeyName] || null;
+					resultRow.record[this.idKeyName] ||
+					null;
 
 			}
 
 			if (!resultRow.recordId) {
-				console.log('no record id for item in cart');
+				console.error('no record id for item in cart', resultRow.recordId, resultRow.record.fieldData, resultRow.record);
 				return;
 			}
 
 			if (!resultRow.vars) {
 				resultRow.vars = {};
 			}
+
+			resultRow.vars.recordId = crypto.randomUUID();
 
 			// check if the id is already in the set
 			if (this.selectedIds.has(resultRow.recordId) && !this.allowDuplicates) { 
@@ -434,7 +437,7 @@ class FmCart extends FmComponent {
 			const { fieldData } = item;
 
 			// get value
-			let value = itemFieldName.includes('::') ? fieldData[itemFieldName] : '';
+			let value = itemFieldName?.includes('::') ? fieldData[itemFieldName] : '';
 
 			// if there is an expression, evaluate it
 			if (expression) {
@@ -625,27 +628,27 @@ class FmCart extends FmComponent {
 			const result = {};
 			const data = row.record.fieldData;
 			const vars = row.vars;
-			console.log(data, vars);
+
 			Object.entries(this.resultTemplate).forEach(([key, value]) => {
-				console.log(key, value);
 
 				if (!value) {
 					result[key] = '';
 				} else if (typeof value === 'boolean') {
 					// if it's a boolean 
 					result[key] = value;
-				} else if (value.startsWith('`')) {
+				} else if (value.startsWith('`') && value.endsWith('`')) {
 					// if the value is a template string, evaluate it
-					value = eval(value);
-				} else if (value.includes('::')) {
+					result[key] = eval(value);
+				} else if (value.includes('::') && data[value]) {
 					// if the value is a fully qualified field name, get the value from the data object
-					value = data[value];
+					result[key] = data[value]
+				} else if (value.includes('::') && !data[value]) {
+					// do nothing, don't add it to the result
+					// we dont' want to clear the value if it's not in the data object
 				} else {
 					// return the literal value
-					value = value;
+					result[key] = value;
 				}
-
-				result[key] = value;
 
 			})
 			results.push(result);
