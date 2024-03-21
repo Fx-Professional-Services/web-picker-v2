@@ -1,5 +1,4 @@
-import FmComponent from 'https://cdn.jsdelivr.net/gh/Fx-Professional-Services/web-picker-v2@testing-modules/components/FmCart.js';
-
+import FmComponent from './FmComponent.js';
 
 // container class to hold the results list and cart elements
 class FmPicker extends FmComponent {
