@@ -1,4 +1,4 @@
-import FMComponent from 'https://github.com/Fx-Professional-Services/web-picker-v2/blob/main/components/FmComponent.js';
+import FmComponent from 'https://cdn.jsdelivr.net/gh/Fx-Professional-Services/web-picker-v2@testing-modules/components/FmCart.js';
 
 class FmCart extends FmComponent {
 	// static methods
@@ -703,4 +703,4 @@ class FmCart extends FmComponent {
 customElements.define('fm-cart', FmCart);
 
 
-// export default FmCart;
+export default FmCart;

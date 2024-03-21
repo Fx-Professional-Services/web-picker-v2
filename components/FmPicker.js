@@ -1,3 +1,6 @@
+import FmComponent from 'https://cdn.jsdelivr.net/gh/Fx-Professional-Services/web-picker-v2@testing-modules/components/FmCart.js';
+
+
 // container class to hold the results list and cart elements
 class FmPicker extends FmComponent {
 	constructor() {
@@ -174,3 +177,6 @@ class FmPicker extends FmComponent {
 
 // define the custom element
 customElements.define('fm-picker', FmPicker);
+
+// export the custom element
+export default FmPicker;

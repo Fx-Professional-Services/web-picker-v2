@@ -1,3 +1,4 @@
+import FmComponent from 'https://cdn.jsdelivr.net/gh/Fx-Professional-Services/web-picker-v2@testing-modules/components/FmCart.js';
 
 
 class FmResultsList extends FmComponent {
@@ -610,3 +611,5 @@ class FmResultsList extends FmComponent {
 }
 
 customElements.define('fm-results-list', FmResultsList);
+
+export default FmResultsList;
