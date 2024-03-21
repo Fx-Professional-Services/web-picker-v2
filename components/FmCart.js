@@ -1,4 +1,4 @@
-import FmComponent from './FmComponent.js';
+// import FmComponent from './FmComponent.js';
 
 class FmCart extends FmComponent {
 	// static methods
@@ -703,4 +703,4 @@ class FmCart extends FmComponent {
 customElements.define('fm-cart', FmCart);
 
 
-export default FmCart;
+// export default FmCart;

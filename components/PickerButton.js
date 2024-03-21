@@ -45,4 +45,4 @@ class PickerButton extends HTMLElement {
 // export the custom element
 customElements.define('picker-button', PickerButton);
 
-export default PickerButton;
+// export default PickerButton;

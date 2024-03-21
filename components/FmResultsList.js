@@ -1,4 +1,4 @@
-import FmComponent from './FmComponent.js';
+// import FmComponent from './FmComponent.js';
 
 class FmResultsList extends FmComponent {
 	// static methods
@@ -611,4 +611,4 @@ class FmResultsList extends FmComponent {
 
 customElements.define('fm-results-list', FmResultsList);
 
-export default FmResultsList;
+// export default FmResultsList;

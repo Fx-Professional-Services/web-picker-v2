@@ -1,4 +1,4 @@
-import FmComponent from './FmComponent.js';
+// import FmComponent from './FmComponent.js';
 
 // container class to hold the results list and cart elements
 class FmPicker extends FmComponent {
@@ -178,4 +178,4 @@ class FmPicker extends FmComponent {
 customElements.define('fm-picker', FmPicker);
 
 // export the custom element
-export default FmPicker;
+// export default FmPicker;

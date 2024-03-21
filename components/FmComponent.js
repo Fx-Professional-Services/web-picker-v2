@@ -127,4 +127,4 @@ class FmComponent extends HTMLElement {
 }
 
 
-export default FmComponent;
+// export default FmComponent;
