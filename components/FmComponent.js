@@ -125,3 +125,6 @@ class FmComponent extends HTMLElement {
 		);
   }
 }
+
+
+export default FmComponent;

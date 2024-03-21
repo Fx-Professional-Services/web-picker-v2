@@ -1,3 +1,5 @@
+import FMComponent from 'https://github.com/Fx-Professional-Services/web-picker-v2/blob/main/components/FmComponent.js';
+
 class FmCart extends FmComponent {
 	// static methods
 	static get observedAttributes() {
@@ -699,3 +701,6 @@ class FmCart extends FmComponent {
 }
 
 customElements.define('fm-cart', FmCart);
+
+
+// export default FmCart;
